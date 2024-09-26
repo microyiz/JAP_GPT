@@ -297,7 +297,7 @@ class DocumentProcessor:
             4. Are there any duplicate options for one question? \
             If the above problems occur, please modify the questions so that they do not have the above problems. \
             The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
-            Report the changes made at last of the file."
+            Report the changes made at end of the file."
         )
 
         chain_three = LLMChain(llm=llm, prompt=prompt_three)
