@@ -132,7 +132,7 @@ class AnswerChecker:
 
 
 class DocumentProcessor:
-    def __init__(self, input_folder, output_folder, output_analysis_folder,revised_newpaper_folder):
+    def __init__(self, input_folder, output_folder, output_analysis_folder,temp_paper, revised_newpaper_folder):
         """
         Initializes the DocumentProcessor with input and output folders.
         
@@ -143,6 +143,7 @@ class DocumentProcessor:
         self.input_folder = input_folder
         self.output_folder = output_folder
         self.output_analysis_folder = output_analysis_folder
+        self.temp_paper = temp_paper
         self.revised_newpaper_folder = revised_newpaper_folder
    
 
@@ -190,7 +191,7 @@ class DocumentProcessor:
         :param filename: Path to save the revised document.
         """
         llm = ChatOpenAI(
-            temperature=0.8,
+            temperature=0.6,
             model="gpt-4o"
         )
 
@@ -227,7 +228,7 @@ class DocumentProcessor:
         :param filename: Path to save the revised document.
         """
         llm = ChatOpenAI(
-            temperature=0.8,
+            temperature=0.6,
             model="gpt-4o"
         ) 
 
@@ -279,23 +280,72 @@ class DocumentProcessor:
         output_path = os.path.join(self.output_analysis_folder, f"{filename}_mistakes_analysis.docx")
         output_doc.save(output_path)
 
-
-    def question_revise(self, rows, filename):
+    # 1. 重复问题
+    def duplicate_questions_revise(self, rows, filename):
         """
         Revise the generated questions using llm
 
         """
         llm = ChatOpenAI(
-            temperature=0.8,
+            temperature=0.6,
             model="gpt-4o"
         )
+        # prompt_three = ChatPromptTemplate.from_template(
+        #     "Now these are the new generated Japanese practice questions: {new_paper} \
+        #     Please revise these questions to check: 1. Are there multiple correct answers for the question options? \
+        #     2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
+        #     3. Are there any errors in the question stem? \
+        #     4. Are there any duplicate options for one question? If so, change the options to avoid that. \
+        #     If the above problems occur, please modify the questions so that they do not have the above problems. \
+        #     The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+        #     Report the changes made at end of the file."
+        # )
         prompt_three = ChatPromptTemplate.from_template(
             "Now these are the new generated Japanese practice questions: {new_paper} \
-            Please revise these questions to check: 1. Are there multiple correct answers for the question options? \
-            2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
-            3. Are there any errors in the question stem? \
-            4. Are there any duplicate options for one question? If so, change the options to avoid that. \
-            If the above problems occur, please modify the questions so that they do not have the above problems. \
+            Please revise this question to check: \
+            Are there any duplicate questions? If so, replace the duplicate one with a new question.\
+            The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+            Report the changes made at end of the file."
+        )
+
+        chain_three = LLMChain(llm=llm, prompt=prompt_three)
+        inputs_three = {
+            'new_paper': rows
+        }
+        revise_result = chain_three.run(inputs_three)
+        output_doc = Document()
+        sentences = self.split_into_sentences(revise_result)
+        for sentence in sentences:
+            output_doc.add_paragraph(sentence)
+
+        # 路径修改
+        output_path = os.path.join(self.temp_paper, f"{filename}_revised_new_paper.docx")
+        output_doc.save(output_path)
+
+    # 2. 重复的选项
+    def duplicate_options_revise(self, rows, filename):
+        """
+        Revise the generated questions using llm
+
+        """
+        llm = ChatOpenAI(
+            temperature=0.6,
+            model="gpt-4o"
+        )
+        # prompt_three = ChatPromptTemplate.from_template(
+        #     "Now these are the new generated Japanese practice questions: {new_paper} \
+        #     Please revise these questions to check: 1. Are there multiple correct answers for the question options? \
+        #     2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
+        #     3. Are there any errors in the question stem? \
+        #     4. Are there any duplicate options for one question? If so, change the options to avoid that. \
+        #     If the above problems occur, please modify the questions so that they do not have the above problems. \
+        #     The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+        #     Report the changes made at end of the file."
+        # )
+        prompt_three = ChatPromptTemplate.from_template(
+            "Now these are the new generated Japanese practice questions: {new_paper} \
+            Please revise this question to check: \
+            Are there any duplicate options for one question? If so, change the options to avoid that.\
             The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
             Report the changes made at end of the file."
         )
@@ -314,8 +364,178 @@ class DocumentProcessor:
         output_path = os.path.join(self.revised_newpaper_folder, f"{filename}_revised_new_paper.docx")
         output_doc.save(output_path)
 
+    # 3. 错误的题目
+    def error_questions_revise(self, rows, filename):
+        """
+        Revise the generated questions using llm
 
+        """
+        llm = ChatOpenAI(
+            temperature=0.6,
+            model="gpt-4o"
+        )
+        # prompt_three = ChatPromptTemplate.from_template(
+        #     "Now these are the new generated Japanese practice questions: {new_paper} \
+        #     Please revise these questions to check: 1. Are there multiple correct answers for the question options? \
+        #     2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
+        #     3. Are there any errors in the question stem? \
+        #     4. Are there any duplicate options for one question? If so, change the options to avoid that. \
+        #     If the above problems occur, please modify the questions so that they do not have the above problems. \
+        #     The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+        #     Report the changes made at end of the file."
+        # )
+        prompt_three = ChatPromptTemplate.from_template(
+            "Now these are the new generated Japanese practice questions: {new_paper} \
+            Please revise this question to check: \
+            Are there any errors in the question ? If so, correct the question\
+            The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+            Report the changes made at end of the file."
+        )
 
+        chain_three = LLMChain(llm=llm, prompt=prompt_three)
+        inputs_three = {
+            'new_paper': rows
+        }
+        revise_result = chain_three.run(inputs_three)
+        output_doc = Document()
+        sentences = self.split_into_sentences(revise_result)
+        for sentence in sentences:
+            output_doc.add_paragraph(sentence)
+
+        # 路径修改
+        output_path = os.path.join(self.revised_newpaper_folder, f"{filename}_revised_new_paper.docx")
+        output_doc.save(output_path)
+    
+    # 4. 多个正确选项
+    def mutiple_correct_answers_revise(self, rows, filename):
+        """
+        Revise the generated questions using llm
+
+        """
+        llm = ChatOpenAI(
+            temperature=0.6,
+            model="gpt-4o"
+        )
+        # prompt_three = ChatPromptTemplate.from_template(
+        #     "Now these are the new generated Japanese practice questions: {new_paper} \
+        #     Please revise these questions to check: 1. Are there multiple correct answers for the question options? \
+        #     2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
+        #     3. Are there any errors in the question stem? \
+        #     4. Are there any duplicate options for one question? If so, change the options to avoid that. \
+        #     If the above problems occur, please modify the questions so that they do not have the above problems. \
+        #     The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+        #     Report the changes made at end of the file."
+        # )
+        prompt_three = ChatPromptTemplate.from_template(
+            "Now these are the new generated Japanese practice questions: {new_paper} \
+            Please revise this question to check: \
+            Are there multiple correct answers for the question options? If so, Keep one correct option and change the others to incorrect options\
+            The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+            Report the changes made at end of the file."
+        )
+
+        chain_three = LLMChain(llm=llm, prompt=prompt_three)
+        inputs_three = {
+            'new_paper': rows
+        }
+        revise_result = chain_three.run(inputs_three)
+        output_doc = Document()
+        sentences = self.split_into_sentences(revise_result)
+        for sentence in sentences:
+            output_doc.add_paragraph(sentence)
+
+        # 路径修改
+        output_path = os.path.join(self.revised_newpaper_folder, f"{filename}_revised_new_paper.docx")
+        output_doc.save(output_path)
+
+  
+    def check_for_errors(self, revised_text):
+        """
+        Check for errors in the revised question set, including:
+        - Multiple correct answers
+        - Duplicate questions
+        - Errors in the question stem
+        - Duplicate options
+        
+        :param revised_text: The revised text output from GPT.
+        :return: True if errors are found, False otherwise.
+        """
+
+        # Error check 1: Multiple correct answers
+        if self.has_multiple_correct_answers(revised_text):
+            return True
+
+        # Error check 2: Duplicate questions
+        if self.has_duplicate_questions(revised_text):
+            return True
+
+        # Error check 3: Errors in the question stem
+        if self.has_stem_errors(revised_text):
+            return True
+
+        # Error check 4: Duplicate options
+        if self.has_duplicate_options(revised_text):
+            return True
+
+        return False
+    
+    def has_multiple_correct_answers(self, text):
+        # 还没想好怎么改
+        pass
+
+    def has_duplicate_questions(self, text):
+        """
+        Check if any questions are duplicated.
+        
+        :param text: The text to check.
+        :return: True if duplicate questions are detected.
+        """
+        questions = re.findall(r'\d+\.\s*(.*?)\n\d+\s(.*?)\n\d+\s(.*?)\n\d+\s(.*?)\n\d+\s(.*?)\n', 
+                               text, re.DOTALL
+                            )
+        seen_questions = set()
+        for question in questions:
+            question_text = question[0].strip()  # Get the question part only
+            if question_text in seen_questions:
+                return True  # Duplicate found
+            seen_questions.add(question)
+        return False
+
+    def has_stem_errors(self, text):
+        """
+        Check for errors in the question stem.
+        
+        :param text: The text to check.
+        :return: True if errors in the stem are detected.
+        """
+        # 只是一个最简单的检查是否有标点符号的检查，需要修改为检查题目内容？
+        # Example: Detect missing or malformed question stems.
+        questions = re.findall(r'\d+\.\s*(.*?)\n', text)
+        for question in questions:
+            if not question.strip() or len(question.strip().split()) < 5:  # Example check
+                return True  # Detected a malformed stem
+        return False
+
+    def has_duplicate_options(self, text):
+        """
+        Check for duplicate options in the questions.
+        
+        :param text: The text to check.
+        :return: True if duplicate options are found within a question.
+        """
+        # Example: Detect duplicate options for a given question.
+        questions_with_options = re.findall(
+            r'(\d+)\.\s*(.*?)\n(1\.\s*(.*?)\n)(2\.\s*(.*?)\n)(3\.\s*(.*?)\n)(4\.\s*(.*?)\n)',
+            text, re.DOTALL
+        )
+
+        for question, opt1, _, opt2, _, opt3, _, opt4, _ in questions_with_options:
+            options = {opt1.strip(), opt2.strip(), opt3.strip(), opt4.strip()}
+            if len(options) < 4:  # If any options are duplicates
+                print(f"Duplicate options detected in question {question}: {opt1.strip()}, {opt2.strip()}, {opt3.strip()}, {opt4.strip()}")
+                return True
+        return False
+    
     def process(self, input_paper, correct_answers_path, sample_analysis):
         """
         Processes all .docx files in the input folder and saves the results in the output folder.
@@ -330,26 +550,26 @@ class DocumentProcessor:
 
 
         # Iterate over all .docx files in the input folder
-        # for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
-        #     # Get the filename without the extension
-        #     filename = os.path.splitext(os.path.basename(filepath))[0]
+        for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
+            # Get the filename without the extension
+            filename = os.path.splitext(os.path.basename(filepath))[0]
             
-        #     start_time = time.time()
+            start_time = time.time()
 
-        #     rows = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
-        #     problem_list =[]
-        #     for item in rows:
-        #         problem_list.append(item[2])
+            rows = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
+            problem_list =[]
+            for item in rows:
+                problem_list.append(item[2])
 
-        #     self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
-        #     # paper_revise还要修改
-        #     self.paper_revise(' '.join(problem_list), filename)
+            self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
+            # paper_revise还要修改
+            self.paper_revise(' '.join(problem_list), filename)
 
 
         
-        #     end_time = time.time()
+            end_time = time.time()
 
-        #     print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
+            print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
 
         # Iterate over all the new question files and fix them
         for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
@@ -359,10 +579,46 @@ class DocumentProcessor:
             start_time = time.time()
 
             new_que = read_docx_to_string(filepath)
-            self.question_revise(new_que,filename)
+            self.duplicate_questions_revise(new_que,filename)
 
             end_time = time.time()
-            print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
+            print(f"Completed revising duplicate questions for new questions {filename} in: {end_time - start_time:.2f} seconds")
+
+        for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
+
+            filename = os.path.splitext(os.path.basename(filepath))[0]
+            
+            start_time = time.time()
+
+            new_que = read_docx_to_string(filepath)
+            self.duplicate_options_revise(new_que,filename)
+
+            end_time = time.time()
+            print(f"Completed revising duplicate options for new questions {filename} in: {end_time - start_time:.2f} seconds")
+
+        for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
+
+            filename = os.path.splitext(os.path.basename(filepath))[0]
+            
+            start_time = time.time()
+
+            new_que = read_docx_to_string(filepath)
+            self.error_questions_revise(new_que,filename)
+
+            end_time = time.time()
+            print(f"Completed revising error questions for new questions {filename} in: {end_time - start_time:.2f} seconds")
+
+        for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
+
+            filename = os.path.splitext(os.path.basename(filepath))[0]
+            
+            start_time = time.time()
+
+            new_que = read_docx_to_string(filepath)
+            self.mutiple_correct_answers_revise(new_que,filename)
+
+            end_time = time.time()
+            print(f"Completed revising multiple correct answers for new questions {filename} in: {end_time - start_time:.2f} seconds")
 
 
 
@@ -409,21 +665,26 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
 
 
 def main():
-    input_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\student paper"
-    output_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\New Paper"
+    input_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Test 1 Sep2024 (n=29)"
+    # output_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\New Paper"
+    # revise一下第一次的有重复题目的
+    output_folder = "C:\\Users\\30998\\Desktop\\template-备份\\template paper from CUHK\\Test1\\New Paper"
     output_mistakes_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Student Mistakes"
     output_analysis_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\Knowledge Point Analysis"
     correct_answers_path = "C:\\Users\\30998\Desktop\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
     input_paper = "C:\\Users\\30998\Desktop\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
+    temp_paper = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\temp_paper"
     # student_paper = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1\\student paper\\1155159595 Test 1.docx"
     sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Revised_newpaper_folder";
+    #新的revised new paper folder
+    #Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Revised_newpaper_folder";
+    Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\new_revise_new";
 
     
 
     checker = AnswerChecker(correct_answers_path, input_folder, output_mistakes_folder)
     checker.process_all_files()
-    processor = DocumentProcessor(input_folder, output_folder, output_analysis_folder,Revised_newpaper_folder)
+    processor = DocumentProcessor(input_folder, output_folder, output_analysis_folder,temp_paper, Revised_newpaper_folder)
     processor.process(input_paper, correct_answers_path, sample_mistake_analysis)
     
 
