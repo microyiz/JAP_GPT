@@ -1,5 +1,6 @@
-![1728397254732](image/readme/1728397254732.png)修改
+# Modify
 
-修改duplicate_option function， 改为10个变量？（正常来说9个能跑的话应该是9个才对） print了结果发现有十个
-
-添加了error_question 和 multiple correct answer 的GPT revise
+1. 修改了prompt（新增了一个check）以及 duplicate_option function
+2. 添加了error_question 和 multiple correct answer 的GPT revise
+3. 目前跑出来的题目筛查以后没有4个问题
+4. 下划线问题仍待解决

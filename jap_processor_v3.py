@@ -268,10 +268,11 @@ class DocumentProcessor:
         prompt_three = ChatPromptTemplate.from_template(
             "Now these are the new generated Japanese practice questions: {new_paper} \
             Please revise these questions to check: \
-            1. Are there multiple correct answers for the question options? \
+            1. Are there any duplicate options for one question? If so, change the options to make them unique. \
             2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
-            3. Are there any errors in the question stem? \
-            4. Are there any duplicate options for one question? If so, change the options to avoid that.\
+            3. Are there any errors in the question? If so, correct the question. \
+            4. Are the stems of these questions all correct? Do they qualify as practice questions? If not, correct the question or replace it with a new question.\
+            5. Are there multiple correct answers for the question options? If so, Keep one correct option and change the others to incorrect options\
             If the above problems occur, please modify the questions so that they do not have the above problems. \
             The structure should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
             Report the changes made at last of the file."
@@ -526,25 +527,25 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
 
 
 def main():
-    # input_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\student paper"
-    # output_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\New Paper"
-    # output_mistakes_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Student Mistakes"
-    # output_analysis_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\Knowledge Point Analysis"
-    # correct_answers_path = "C:\\Users\\30998\Desktop\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
-    # input_paper = "C:\\Users\\30998\Desktop\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
-    # sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    # Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Revised_newpaper_folder";
-
-
-    # sample, just for check function
-    input_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\input"
-    output_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\new paper"
-    output_mistakes_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\mistake"
-    output_analysis_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\analysis"
+    input_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\student paper"
+    output_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\New Paper"
+    output_mistakes_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Student Mistakes"
+    output_analysis_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\Knowledge Point Analysis"
     correct_answers_path = "C:\\Users\\30998\Desktop\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
     input_paper = "C:\\Users\\30998\Desktop\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
     sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\revised new paper";
+    Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\Revised_newpaper_folder";
+
+
+    # sample, just for check function
+    # input_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\input"
+    # output_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\new paper"
+    # output_mistakes_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\mistake"
+    # output_analysis_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\analysis"
+    # correct_answers_path = "C:\\Users\\30998\Desktop\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
+    # input_paper = "C:\\Users\\30998\Desktop\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
+    # sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
+    # Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\sample\\revised new paper";
 
 
     checker = AnswerChecker(correct_answers_path, input_folder, output_mistakes_folder)
