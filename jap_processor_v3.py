@@ -132,7 +132,7 @@ class AnswerChecker:
 
 
 class DocumentProcessor:
-    def __init__(self, input_folder, output_folder, output_analysis_folder, revised_newpaper_folder):
+    def __init__(self, input_folder, output_folder, output_analysis_folder, revised_newpaper_folder, mistake_database):
         """
         Initializes the DocumentProcessor with input and output folders.
         
@@ -144,6 +144,7 @@ class DocumentProcessor:
         self.output_folder = output_folder
         self.output_analysis_folder = output_analysis_folder
         self.revised_newpaper_folder = revised_newpaper_folder
+        self.mistake_database = mistake_database
 
     def load_document(self, filepath):
         """
@@ -473,6 +474,7 @@ class DocumentProcessor:
         # Ensure the output folder exists
         os.makedirs(self.output_folder, exist_ok=True)
         os.makedirs(self.output_analysis_folder, exist_ok=True)
+        os.makedirs(self.mistake_database, exist_ok=True)
 
 
         # Iterate over all .docx files in the input folder
@@ -483,6 +485,20 @@ class DocumentProcessor:
             start_time = time.time()
 
             rows = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
+            ### 这里打印出来看看
+            output_doc = Document()
+            # Iterate through each row and add it to the document
+            for row in rows:
+                # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
+                mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
+                output_doc.add_paragraph(mistake_entry)
+
+            # 路径修改
+            output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
+            output_doc.save(output_path)
+            print(f"Completed storing {filename} mistake database.")
+            
+
             problem_list =[]
             for item in rows:
                 problem_list.append(item[2])
@@ -562,11 +578,12 @@ def main():
     input_paper = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\test 1 paper\\Test 1 Question Paper.docx"
     sample_mistake_analysis = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\1155159595 Test 1_sample_mistakes_analysis.doc"
     Revised_newpaper_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Revised_newpaper_folder"
+    Mistake_database = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Mistake_database"
     
 
     checker = AnswerChecker(correct_answers_path, input_folder, output_mistakes_folder)
     checker.process_all_files()
-    processor = DocumentProcessor(input_folder, output_folder, output_analysis_folder, Revised_newpaper_folder)
+    processor = DocumentProcessor(input_folder, output_folder, output_analysis_folder, Revised_newpaper_folder, Mistake_database)
     processor.process(input_paper, correct_answers_path, sample_mistake_analysis)
     
 
