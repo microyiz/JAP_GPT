@@ -1,6 +1,5 @@
 # Modify
 
-1. 修改了prompt（新增了一个check）以及 duplicate_option function
-2. 添加了error_question 和 multiple correct answer 的GPT revise
-3. 目前跑出来的题目筛查以后没有4个问题
-4. 下划线问题仍待解决
+1. 整合了文档处理格式处理部分以及prompt
+2. ![1728974808379](image/readme/1728974808379.png)在之前的版本（未调整下划线， 10月8日生成的new paper中，GPT对其自适应，生成了以其他符号表明下划线的相关题目
+3. 仍在调整如何point out出重点词例如上图的住所，目前结构仍有一些混乱可见sample

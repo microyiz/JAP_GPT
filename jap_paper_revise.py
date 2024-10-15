@@ -66,23 +66,134 @@ def remove_specific_sentence(text, target_sentence):
     new_lines = [line for line in lines if target_sentence not in line]
     return '\n'.join(new_lines)
 
-#清理试卷
+# #清理试卷
+# def clean_document(filepath, outputfilepath):
+#     doc = Document(filepath)
+#     new_doc = Document()
+#     full_text =[]
+#     for paragraph in doc.paragraphs:
+#         full_text.append(paragraph.text)
+#     text = '\n'.join(full_text)
+#     cleaned_text = remove_delimiters(text)
+#     # target_sentence = "End of Part 1.  Thank you!  Please continue to complete Part 2."
+#     # cleaned_text = remove_specific_sentence(cleaned_text, target_sentence)
+#     new_doc = Document()
+#     new_doc.add_paragraph(cleaned_text)
+#     # for line in cleaned_text.split('\n'):
+#     #     new_doc.add_paragraph(line)
+            
+#     new_doc.save(outputfilepath)
+
+
+# def clean_document(filepath, outputfilepath):
+#     doc = Document(filepath)
+#     new_doc = Document()
+
+#     # 遍历原文档中的段落和run，并保留格式
+#     for paragraph in doc.paragraphs:
+#         new_paragraph = new_doc.add_paragraph()
+        
+#         for run in paragraph.runs:
+#             # 获取run的文本并清理文本内容
+#             cleaned_text = remove_delimiters(run.text)
+            
+#             # 创建新的run并保留原有格式
+#             new_run = new_paragraph.add_run(cleaned_text)
+#             copy_run_format(run, new_run)
+
+#     new_doc.save(outputfilepath)
+
 def clean_document(filepath, outputfilepath):
     doc = Document(filepath)
     new_doc = Document()
-    full_text =[]
+
+    skip_content = False  # 标记是否要跳过分隔符之间的内容
+
     for paragraph in doc.paragraphs:
-        full_text.append(paragraph.text)
-    text = '\n'.join(full_text)
-    cleaned_text = remove_delimiters(text)
-    # target_sentence = "End of Part 1.  Thank you!  Please continue to complete Part 2."
-    # cleaned_text = remove_specific_sentence(cleaned_text, target_sentence)
-    new_doc = Document()
-    new_doc.add_paragraph(cleaned_text)
-    # for line in cleaned_text.split('\n'):
-    #     new_doc.add_paragraph(line)
-            
+        new_paragraph = new_doc.add_paragraph()
+
+        for run in paragraph.runs:
+            # 如果发现分隔符，跳过分隔符及其之间的内容
+            if '＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿' in run.text:
+                if not skip_content:
+                    # 进入跳过模式
+                    skip_content = True
+                else:
+                    # 退出跳过模式
+                    skip_content = False
+                continue
+
+            if not skip_content:
+                # 获取run的文本并清理文本内容
+                cleaned_text = remove_delimiters_from_run(run.text)
+                
+                # 创建新的run并保留原有格式
+                new_run = new_paragraph.add_run(cleaned_text)
+                copy_run_format(run, new_run)
+
     new_doc.save(outputfilepath)
+
+def remove_delimiters_from_run(text):
+    # 这里可以视情况处理run的内容，如果需要进一步处理每个run内的文本
+    return text
+
+def copy_run_format(source_run, target_run):
+    """将source_run的格式复制到target_run"""
+    target_run.bold = source_run.bold
+    target_run.italic = source_run.italic
+    target_run.underline = source_run.underline
+    target_run.font.name = source_run.font.name
+    target_run.font.size = source_run.font.size
+    target_run.font.color.rgb = source_run.font.color.rgb
+
+# from docx import Document
+# from docx.oxml.ns import qn
+# from docx.oxml import OxmlElement
+
+# def clean_document(filepath, outputfilepath):
+#     doc = Document(filepath)
+#     new_doc = Document()
+
+#     for paragraph in doc.paragraphs:
+#         new_paragraph = new_doc.add_paragraph()
+
+#         for run in paragraph.runs:
+#             # Add the run's text to the new paragraph
+#             new_run = new_paragraph.add_run(run.text)
+
+#             # Preserve basic formatting like underline, bold, and italic
+#             if run.underline:
+#                 new_run.underline = True
+
+#                 # Advanced: Optionally customize underline (style and color)
+#                 r = new_run._r  # Access the <w:r> element
+#                 u = OxmlElement('w:u')  # Create an underline element
+#                 u.set(qn('w:val'), 'single')  # Set underline type (e.g., 'single', 'double')
+#                 u.set(qn('w:color'), 'FF0000')  # Optionally set underline color to red
+#                 r.append(u)  # Append the underline element to the run
+
+#             # Preserve bold and italic formatting
+#             if run.bold:
+#                 new_run.bold = True
+#             if run.italic:
+#                 new_run.italic = True
+
+#     # Convert the entire document to plain text (with formatting preserved)
+#     full_text = []
+#     for paragraph in new_doc.paragraphs:
+#         full_text.append(paragraph.text)
+
+#     # Join all text and apply delimiter cleaning
+#     cleaned_text = remove_delimiters('\n'.join(full_text))
+
+#     # Clear the new document and insert the cleaned text back
+#     new_doc = Document()  # Reset document
+#     new_doc.add_paragraph(cleaned_text)
+
+#     # Save the new document
+#     new_doc.save(outputfilepath)
+
+
 
 # 生成题号
 def generate_question_separators(max_questions: int):
@@ -115,6 +226,29 @@ def read_docx_to_string(file_path):
 
     return '\n'.join(full_text)
 
+def read_docx_to_string_with_format(file_path):
+    """
+    读取 docx 文件中的所有文字并保留格式（粗体、斜体、下划线）
+    """
+    doc = Document(file_path)
+    full_text = []
+
+    for paragraph in doc.paragraphs:
+        para_text = ""
+        for run in paragraph.runs:
+            run_text = run.text
+            if run.bold:
+                run_text = f"<b>{run_text}</b>"
+            if run.italic:
+                run_text = f"<i>{run_text}</i>"
+            if run.underline:
+                run_text = f"<u>{run_text}</u>"
+            para_text += run_text
+        full_text.append(para_text)
+
+    return '\n'.join(full_text)
+
+
 
 def split_text_with_separators(text, separators):
     """
@@ -137,9 +271,12 @@ def split_text_with_separators(text, separators):
 def produce_split_question_list(input_file, filename):
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     file_name = f"{filename} {timestamp}.docx"
-    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\template paper from CUHK\\processed test paper", file_name)
+    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\processed test paper", file_name)
     clean_document(input_file,output_file_path)
-    d = read_docx_to_string(output_file_path)
+    #这里clean_document()成功保留原格式，包括下划线粗体等，但下面read_docx_to_string还是将格式drop了
+
+    # d = read_docx_to_string(output_file_path)
+    d = read_docx_to_string_with_format(output_file_path)
     question_sep = generate_question_separators(100)
     split_result = split_text_with_separators(d, question_sep)
 
@@ -148,6 +285,7 @@ def produce_split_question_list(input_file, filename):
 
     split_result_copy = []
     ques_type =" "
+
     for element in split_result:
         if re.search(pattern1, element):
             test = element.split("もんだい")
@@ -200,10 +338,5 @@ def return_revised_result(question_path,right_answer_path,wrong_answer_path, fil
 
     return revise_result_all,right_or_wrong
 
-# def main():
-#     new_question_path = "C:\\Users\\30998\\Desktop\\template paper from CUHK\\Test1\\New Paper\\1155159595 Test 1_new_report.docx"
-#     d = read_docx_to_string(new_question_path)
-#     print(d)
 
-# if __name__ == "__main__":
-#     main()
+# def check_underline(file):
