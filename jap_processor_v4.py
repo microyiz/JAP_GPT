@@ -438,7 +438,6 @@ class DocumentProcessor:
         return False
 
 
-
     def process(self, input_paper, correct_answers_path, sample_analysis):
         """
         Processes all .docx files in the input folder and saves the results in the output folder.
@@ -562,26 +561,26 @@ def main():
     # processor = DocumentProcessor(input_folder, output_folder, output_analysis_folder, Revised_newpaper_folder, Mistake_database)
     # processor.process(input_paper, correct_answers_path, sample_mistake_analysis)
 
-    input_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\student paper"
-    output_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\New Paper"
-    output_mistakes_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\Student Mistakes"
-    output_analysis_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\Knowledge Point Analysis"
-    correct_answers_path = "C:\\Users\\30998\Desktop\\JAP_GPT\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
-    input_paper = "C:\\Users\\30998\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
-    sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\Revised_newpaper_folder"
-    Mistake_database = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\Mistake_database"
-
-    # sample, just for check function
-    # input_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\input"
-    # output_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\new paper"
-    # output_mistakes_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\mistake"
-    # output_analysis_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\analysis"
+    # input_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\student paper"
+    # output_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\New Paper"
+    # output_mistakes_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\Student Mistakes"
+    # output_analysis_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\Knowledge Point Analysis"
     # correct_answers_path = "C:\\Users\\30998\Desktop\\JAP_GPT\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
     # input_paper = "C:\\Users\\30998\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
     # sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    # Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\revised new paper"
-    # Mistake_database = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\Mistake_database"
+    # Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\Revised_newpaper_folder"
+    # Mistake_database = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\Mistake_database"
+
+    # sample, just for check function
+    input_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\input"
+    output_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\new paper"
+    output_mistakes_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\mistake"
+    output_analysis_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\analysis"
+    correct_answers_path = "C:\\Users\\30998\Desktop\\JAP_GPT\\template paper from CUHK\Test1\\test 1 paper\\Test 1 Model Answer.docx"
+    input_paper = "C:\\Users\\30998\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
+    sample_mistake_analysis = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\1155159595 Test 1_sample_mistakes_analysis.doc"
+    Revised_newpaper_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\revised new paper"
+    Mistake_database = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\sample\\Mistake_database"
 
 
     checker = AnswerChecker(correct_answers_path, input_folder, output_mistakes_folder)
