@@ -276,7 +276,9 @@ class DocumentProcessor:
             4. Are the stems of these questions all correct? Do they qualify as practice questions? If not, correct the question or replace it with a new question.\
             5. Are there multiple correct answers for the question options? If so, Keep one correct option and change the others to incorrect options\
             If the above problems occur, please modify the questions so that they do not have the above problems. \
-            If the question is about the pronunciation of a Japanese word or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions\
+            If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions.\
+            If the question is ask a katakana word's hiragana, make sure the options are hiragana.\
+            If the question is ask a hiragana word's katakana, make sure the options are katakana.\
             The structure of new questions should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
             Report the changes made at last of the file."
         )
@@ -333,21 +335,27 @@ class DocumentProcessor:
 
         return False  # No errors detected
     
-    # def has_multiple_correct_answers(self, text):
-    #     """
-    #     Check for multiple correct answers in the text.
-    #     This could be adapted by parsing the question and answers, or using regex patterns.
-        
-    #     :param text: The text to check.
-    #     :return: True if multiple correct answers are detected.
-    #     """
-    #     # This is an example and may need further refinement based on the format.
-    #     # Assuming correct answers are marked or follow a specific format:
-    #     correct_answers = re.findall(r'\[correct answer: (\w+)\]', text, re.IGNORECASE)
-    #     if len(set(correct_answers)) > 1:  # More than one unique correct answer found
-    #         return True
-    #     return False
     
+    # check 平假名和片假名互相转换的问题：如果询问的词是平假名，则选项中只能有片假名，反之亦然
+
+    def check_for_katakana_hiragana(self, text):
+        llm = ChatOpenAI(
+            temperature=0.6,  # Adjusted for more deterministic behavior
+            model="gpt-4o"
+        )
+        prompt = ChatPromptTemplate.from_template(
+            "Now check the new generated Japanese practice questions: {new_paper} \
+            If it's a question "
+        )
+
+        chain = LLMChain(llm=llm, prompt = prompt)
+        input = {'new_paper': text}
+
+        result = chain.run(input)
+        bool_dict = {"True": True, "False": False, "true": True, "false":False}
+
+        return bool_dict[result]
+
     def has_multiple_correct_answers(self, text):
         llm = ChatOpenAI(
             temperature=0.6,  # Adjusted for more deterministic behavior
@@ -453,38 +461,38 @@ class DocumentProcessor:
 
 
         # Iterate over all .docx files in the input folder
-        # for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
-        #     # Get the filename without the extension
-        #     filename = os.path.splitext(os.path.basename(filepath))[0]
+        for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
+            # Get the filename without the extension
+            filename = os.path.splitext(os.path.basename(filepath))[0]
             
-        #     start_time = time.time()
+            start_time = time.time()
 
-        #     rows = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
-        #     ### 这里打印出来看看
-        #     output_doc = Document()
-        #     # Iterate through each row and add it to the document
-        #     for row in rows:
-        #         # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
-        #         mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
-        #         output_doc.add_paragraph(mistake_entry)
+            rows = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
+            ### 这里打印出来看看
+            output_doc = Document()
+            # Iterate through each row and add it to the document
+            for row in rows:
+                # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
+                mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
+                output_doc.add_paragraph(mistake_entry)
 
-        #     # 路径修改
-        #     output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
-        #     output_doc.save(output_path)
-        #     print(f"Completed storing {filename} mistake database.")
+            # 路径修改
+            output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
+            output_doc.save(output_path)
+            print(f"Completed storing {filename} mistake database.")
             
 
-        #     problem_list =[]
-        #     for item in rows:
-        #         problem_list.append(item[2])
+            problem_list =[]
+            for item in rows:
+                problem_list.append(item[2])
             
-        #     self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
-        #     # paper_revise还要修改
-        #     self.paper_revise(' '.join(problem_list), filename)
+            self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
+            # paper_revise还要修改
+            self.paper_revise(' '.join(problem_list), filename)
 
-        #     end_time = time.time()
+            end_time = time.time()
 
-        #     print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
+            print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
 
         # Iterate over all the new question files and fix them
         for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):

@@ -1,4 +1,8 @@
 # Modify
 
-1. 使用GPT对question type 进行了总结
-2. 目标：平假名 片假名题目进行选项的check loop
+1. 检查了提问平假名的题目 题目中是否为片假名，选项中是否为平假名（反之亦然）
+2. sample中的三个文档效果不错：
+
+If the question is ask a katakana word's hiragana, make sure the options are hiragana.\
+
+If the question is ask a hiragana word's katakana, make sure the options are katakana.\
