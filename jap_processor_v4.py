@@ -269,17 +269,20 @@ class DocumentProcessor:
         )
         prompt_three = ChatPromptTemplate.from_template(
             "Now these are the new generated Japanese practice questions: {new_paper} \
-            Please revise these questions to check: \
-            1. Are there any duplicate options for one question? If so, change the options to make them unique. \
-            2. Are there any duplicate questions? If so, replace the duplicate one with a new question.\
-            3. Are there any errors in the question? If so, correct the question. \
-            4. Are the stems of these questions all correct? Do they qualify as practice questions? If not, correct the question or replace it with a new question.\
-            5. Are there multiple correct answers for the question options? If so, Keep one correct option and change the others to incorrect options\
-            If the above problems occur, please modify the questions so that they do not have the above problems. \
-            If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions.\
+            You are an excellent Japanese N4 examiner and provide students with appropriate multiple-choice test questions. All provided questions should meet the following criteria:\
+            1.No duplicate questions. All the questions should be unique. Delete any repeated questions and replace them with new ones.\
+            2.No duplicate options. All options should be unique and meaningful within the context of the question.\
+            3.No duplicate answers. The answer to the question should be unique in the context of the exam.\
+            4.Grammatical correctness. The title and stem of the question should be grammatically correct.\
+            5.Relevance of options. \
+            One modification idea is that the correct option should more clearly point to a suitable answer which is reasonable and fits the context of the stem, while ensuring that the other options are clearly inappropriate or incorrect. \
+            For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. A better example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. つくえ 4. 花', where only つくえ is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “つくえ”.\
+            Another modification idea is that the question should clearly indicate what cannot be chosen. The stem must specify the context in which one option is clearly inappropriate, while all other options are suitable.\
+            For example, in the stem 'その 映画は ( 　　　　　 ) ではありません', options like “つまらない”, “面白い”, and “怖い” are appropriate descriptors for a film, but “おいしい” is not, making it the correct answer. If the question asks an obvious 'no' (choose the most inappropriate one), make sure the question stem itself is in negative form “ません”.\
+            6. If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions.\
             If the question is ask a katakana word's hiragana, make sure the options are hiragana.\
             If the question is ask a hiragana word's katakana, make sure the options are katakana.\
-            The structure of new questions should be same with original questions, all the answers will be attached at the end. Do not attach the answer after each question. \
+            If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers will be attached at the end. Do not attach the answer after each question. \
             Report the changes made at last of the file."
         )
 
@@ -298,7 +301,7 @@ class DocumentProcessor:
         sentences = self.split_into_sentences(revise_result)
         
         for sentence in sentences:
-            sentence.replace("＿＿＿", "  ")
+            sentence.replace("＿＿＿", "[ ]")
             output_doc.add_paragraph(sentence)
 
         # 路径修改
@@ -338,23 +341,23 @@ class DocumentProcessor:
     
     # check 平假名和片假名互相转换的问题：如果询问的词是平假名，则选项中只能有片假名，反之亦然
 
-    def check_for_katakana_hiragana(self, text):
-        llm = ChatOpenAI(
-            temperature=0.6,  # Adjusted for more deterministic behavior
-            model="gpt-4o"
-        )
-        prompt = ChatPromptTemplate.from_template(
-            "Now check the new generated Japanese practice questions: {new_paper} \
-            If it's a question "
-        )
+    # def check_for_katakana_hiragana(self, text):
+    #     llm = ChatOpenAI(
+    #         temperature=0.6,  # Adjusted for more deterministic behavior
+    #         model="gpt-4o"
+    #     )
+    #     prompt = ChatPromptTemplate.from_template(
+    #         "Now check the new generated Japanese practice questions: {new_paper} \
+    #         If it's a question "
+    #     )
 
-        chain = LLMChain(llm=llm, prompt = prompt)
-        input = {'new_paper': text}
+    #     chain = LLMChain(llm=llm, prompt = prompt)
+    #     input = {'new_paper': text}
 
-        result = chain.run(input)
-        bool_dict = {"True": True, "False": False, "true": True, "false":False}
+    #     result = chain.run(input)
+    #     bool_dict = {"True": True, "False": False, "true": True, "false":False}
 
-        return bool_dict[result]
+    #     return bool_dict[result]
 
     def has_multiple_correct_answers(self, text):
         llm = ChatOpenAI(
@@ -553,21 +556,6 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
 
 
 def main():
-    # input_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\student paper"
-    # output_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\New Paper"
-    # output_mistakes_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Student Mistakes"
-    # output_analysis_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Knowledge Point Analysis"
-    # correct_answers_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\test 1 paper\\Test 1 Model Answer.docx"
-    # input_paper = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\test 1 paper\\Test 1 Question Paper.docx"
-    # sample_mistake_analysis = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    # Revised_newpaper_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Revised_newpaper_folder"
-    # Mistake_database = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Mistake_database"
-    
-
-    # checker = AnswerChecker(correct_answers_path, input_folder, output_mistakes_folder)
-    # checker.process_all_files()
-    # processor = DocumentProcessor(input_folder, output_folder, output_analysis_folder, Revised_newpaper_folder, Mistake_database)
-    # processor.process(input_paper, correct_answers_path, sample_mistake_analysis)
 
     # input_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\student paper"
     # output_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\New Paper"
