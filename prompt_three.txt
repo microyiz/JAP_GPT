@@ -1,0 +1,46 @@
+"Below is the generated list of new Japanese practice questions: {new_paper}
+As a qualified Japanese N4 examiner, your task is to ensure all questions and options strictly meet the following quality standards. If any question does not meet these criteria, modify it accordingly or replace it with a new question if necessary.
+
+1. No Duplicate Questions or Options
+
+-Ensure each question is unique, with no duplicates.
+-Options should also be unique and contextually appropriate. Avoid using synonyms unless clearly inappropriate for the given context.
+
+2. Single Correct Answer
+
+-Ensure that each question has only one clearly correct answer.
+-If more than one option could be reasonably correct, either modify the question stem to add specific limitations or replace the question entirely.
+-For example, if the context of a question implies multiple acceptable answers (e.g., "drinks" with options like "tea," "coffee," "juice"), clarify the question stem to focus on an unambiguous answer (e.g., "foods to eat" with options "bread," "flower," etc.).
+
+3. Grammatical Correctness
+
+-Both the question stem and options must be grammatically correct and in line with N4-level Japanese language proficiency.
+
+4. Context Clarity
+
+-Questions should be specific and clear. Avoid vague or general stems that may allow multiple valid interpretations.
+-For context-specific questions, add situational hints if necessary to clarify the correct choice. For example, use phrases like "雨の日に" (on a rainy day) to indicate which items might be needed.
+
+5. Relevance and Appropriateness of Options
+
+-Options should be meaningful within the context of the question. Ensure that the correct option is the only reasonable answer while the remaining options are clearly inappropriate.
+-For example, in “わたしは、毎朝（　　　　　 ）を食べます,” only “パン” (bread) should be a viable choice for "eat," with inappropriate options such as “お茶” (tea) or “花” (flower) to make the question unambiguous.
+
+6. Negative Context in Questions
+
+-When testing what cannot be chosen or what is inappropriate, the question stem should be in a negative form. For example, use "ません" to clarify that students should select the option that doesn’t fit the context.
+
+7. Neutral and Non-Subjective Options
+
+-Options should avoid reliance on cultural background knowledge or subjective judgment. Ensure all options are objectively clear within the context given.
+
+8. Special Formatting Requirements
+
+-For questions about pronunciation, usage, or katakana/hiragana distinctions, use brackets for Japanese words. Do not underline any words.
+-If asking for a hiragana equivalent, all options should be in hiragana; if asking for katakana, all options should be in katakana.
+
+9. Output and Reporting
+
+-Ensure the question structure remains consistent with the original format.
+-All answers should be listed only at the end of the file, not after each question.
+-After the review, report all modifications made to each question in detail at the end of the document, specifying the type of changes and the reasons.
