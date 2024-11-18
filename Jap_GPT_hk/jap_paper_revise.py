@@ -278,7 +278,7 @@ def split_text_with_separators(text, separators):
 def produce_split_question_list(input_file, filename):
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     file_name = f"{filename} {timestamp}.docx"
-    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\processed test paper", file_name)
+    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\jap_GPT_hk\\sample\\processed test paper", file_name)
     clean_document(input_file,output_file_path)
     #这里clean_document()成功保留原格式，包括下划线粗体等，但下面read_docx_to_string还是将格式drop了
 
@@ -313,7 +313,7 @@ def produce_split_question_list(input_file, filename):
 def produce_split_new_question_list(input_file, filename):
     timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     file_name = f"{filename} {timestamp}.docx"
-    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\processed test paper", file_name)
+    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\jap_GPT_hk\\sample\\processed new paper", file_name)
     clean_document(input_file,output_file_path)
     #这里clean_document()成功保留原格式，包括下划线粗体等，但下面read_docx_to_string还是将格式drop了
 
@@ -322,28 +322,13 @@ def produce_split_new_question_list(input_file, filename):
     question_sep = generate_question_numbers(20)
     split_result = split_text_with_separators(d, question_sep)
 
-    pattern1 = r'もんだい\d+'
-    pattern2 = r'問題\d+'
-
     split_result_copy = []
     ques_type =" "
 
     for element in split_result:
-        if re.search(pattern1, element):
-            test = element.split("もんだい")
-            ques_type = test[1]
-            split_result_copy.append(test[1]+"\n"+test[0])
-          
-        elif re.search(pattern2,element):
-            test = element.split("問題")
-            ques_type = test[1]
-            split_result_copy.append(test[1]+"\n"+test[0])
-
-        else:
-            split_result_copy.append(ques_type+"\n"+element)
+        split_result_copy.append(ques_type+"\n"+element)
     
     return split_result_copy
-
 
 """
     生成两个列表，一个存着所有题目的批改结果，
