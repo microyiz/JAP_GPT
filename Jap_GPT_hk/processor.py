@@ -184,7 +184,7 @@ class DocumentProcessor:
         return sentences
 
     
-    def paper_revise(self, rows, matching, filename):
+    def paper_revise(self, rows, matching, material, mistake_count, filename):
         """
         Revises a list using a language model and saves the results.
 
@@ -195,38 +195,71 @@ class DocumentProcessor:
             temperature=0.8,
             model="gpt-4o"
         )
+        if mistake_count > 5:
+            prompt_one = ChatPromptTemplate.from_template(
+                "Below is a list of incorrect answers provided by Japanese language students: {error_report}\n"
+                "Each question includes the student's incorrect choice and the correct answer.\n"
+                "Based on these errors and the corresponding knowledge points {matching_knowledge_points}, generate new practice questions targeting similar grammar or vocabulary points to help students strengthen their understanding.\n"
+                "1.No duplicate questions. All the questions should be unique. Delete any repeated questions and replace them with new ones.\n"
+                "2.No duplicate options. All options should be unique and meaningful within the context of the question.\n"
+                "3.No duplicate answers. The answer to the question should be unique in the context of the exam. Please not have two or more than two suitable answer to choose the most suitable one, make sure it has only one suitable answer, you can add specific condition in the question stem or change the options.\n"
+                "4.Grammatical correctness. The title and stem of the question should be grammatically correct. You can put back the correct option to the question stem, if there is a grammar issue such as the object word of the sentence is incorrect, please revise the question stem and the options. If all the answer can't fit the question, recreate a question with same knowledge point to replace it.\n"
+                "5.Relevance of options. \n"
+                "One modification idea is that the correct option should more clearly point to a suitable answer which is reasonable and fits the context of the stem, while ensuring that the other options are clearly inappropriate or incorrect. \n"
+                "For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. A better example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. パン 4. 花', where only パン is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “パン”.\n"
+                "Another modification idea is that the question should clearly indicate what cannot be chosen. The stem must specify the context in which one option is clearly inappropriate, while all other options are suitable.\n"
+                "For example, in the stem 'その 映画は ( 　　　　　 ) ではありません', options like “つまらない”, “面白い”, and “怖い” are appropriate descriptors for a film, but “おいしい” is not, making it the correct answer. If the question asks an obvious 'no' (choose the most inappropriate one), make sure the question stem itself is in negative form “ません”.\n"
+                "So in these options, ignore the culture background and avoid subjective consciousness questions and options\n"
+                "6. If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions. Do not show the right answer in the question stem.\n"
+                "If the question is ask a katakana word's hiragana, make sure the word in the question is katakana and all the options are hiragana, and do not show right answer in the question.\n"
+                "If the question is ask a hiragana word's katakana, make sure the word in the question is hiragana and all the options are katakana, and do not show right answer in the question.\n"
+                "If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. \n"
+                "The new questions should be in a multiple-choice format and appropriate for the Japanese Language Proficiency Test N3 level.\n"
+                "Please create {num_questions} new questions, each with four different options. Ensure that only one of these options is correct and should be evenly distributed among 1, 2, 3, and 4.\n"
+                "The instruction of the questions should be attached in front of each question. \n"
+                "Finally, all the answers will be attached at the end. Do not attach the answer after each question."
+            )
+            
+            inputs_one = {
+                'matching_knowledge_points':matching,
+                'error_report': rows,
+                'num_questions': 20
+            }
+        elif mistake_count <= 5:
+            prompt_one = ChatPromptTemplate.from_template(
+                "Below is a list of incorrect answers provided by Japanese language students: {error_report}\n"
+                "Each question includes the student's incorrect choice and the correct answer.\n"
+                "Based on these errors and the corresponding knowledge points: {matching_knowledge_points} and use these materials as supplementary knowledge points: {material}, generate new practice questions targeting similar grammar or vocabulary points to help students strengthen their understanding.\n"
+                "The question should meet following standards:\n"
+                "1.No duplicate questions. All the questions should be unique. Delete any repeated questions and replace them with new ones.\n"
+                "2.No duplicate options. All options should be unique and meaningful within the context of the question.\n"
+                "3.No duplicate answers. The answer to the question should be unique in the context of the exam. Please not have two or more than two suitable answer to choose the most suitable one, make sure it has only one suitable answer, you can add specific condition in the question stem or change the options.\n"
+                "4.Grammatical correctness. The title and stem of the question should be grammatically correct. You can put back the correct option to the question stem, if there is a grammar issue such as the object word of the sentence is incorrect, please revise the question stem and the options. If all the answer can't fit the question, recreate a question with same knowledge point to replace it.\n"
+                "5.Relevance of options. \n"
+                "One modification idea is that the correct option should more clearly point to a suitable answer which is reasonable and fits the context of the stem, while ensuring that the other options are clearly inappropriate or incorrect. \n"
+                "For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. A better example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. パン 4. 花', where only パン is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “パン”.\n"
+                "Another modification idea is that the question should clearly indicate what cannot be chosen. The stem must specify the context in which one option is clearly inappropriate, while all other options are suitable.\n"
+                "For example, in the stem 'その 映画は ( 　　　　　 ) ではありません', options like “つまらない”, “面白い”, and “怖い” are appropriate descriptors for a film, but “おいしい” is not, making it the correct answer. If the question asks an obvious 'no' (choose the most inappropriate one), make sure the question stem itself is in negative form “ません”.\n"
+                "So in these options, ignore the culture background and avoid subjective consciousness questions and options\n"
+                "6. If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions. Do not show the right answer in the question stem.\n"
+                "If the question is ask a katakana word's hiragana, make sure the word in the question is katakana and all the options are hiragana, and do not show right answer in the question.\n"
+                "If the question is ask a hiragana word's katakana, make sure the word in the question is hiragana and all the options are katakana, and do not show right answer in the question.\n"
+                "If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. \n"
+                "The new questions should be in a multiple-choice format and appropriate for the Japanese Language Proficiency Test N3 level.\n"
+                "Please create {num_questions} new questions, each with four different options. Ensure that only one of these options is correct and should be evenly distributed among 1, 2, 3, and 4.\n"
+                "The instruction of the questions should be attached in front of each question. Do not have hints on the questions. \n"
+                "Finally, all the answers will be attached at the end. Do not attach the answer after each question."
+            )
+            
+            inputs_one = {
+                'material':material,
+                'matching_knowledge_points':matching,
+                'error_report': rows,
+                'num_questions': 20
+            }
 
-        prompt_one = ChatPromptTemplate.from_template(
-            "Below is a list of incorrect answers provided by Japanese language students: {error_report}\n"
-            "Each question includes the student's incorrect choice and the correct answer.\n"
-            "Based on these errors and the corresponding knowledge points {matching_knowledge_points}, generate new practice questions targeting similar grammar or vocabulary points to help students strengthen their understanding.\n"
-            "1.No duplicate questions. All the questions should be unique. Delete any repeated questions and replace them with new ones.\n"
-            "2.No duplicate options. All options should be unique and meaningful within the context of the question.\n"
-            "3.No duplicate answers. The answer to the question should be unique in the context of the exam. Please not have two or more than two suitable answer to choose the most suitable one, make sure it has only one suitable answer, you can add specific condition in the question stem or change the options.\n"
-            "4.Grammatical correctness. The title and stem of the question should be grammatically correct. You can put back the correct option to the question stem, if there is a grammar issue such as the object word of the sentence is incorrect, please revise the question stem and the options. If all the answer can't fit the question, recreate a question with same knowledge point to replace it.\n"
-            "5.Relevance of options. \n"
-            "One modification idea is that the correct option should more clearly point to a suitable answer which is reasonable and fits the context of the stem, while ensuring that the other options are clearly inappropriate or incorrect. \n"
-            "For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. A better example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. パン 4. 花', where only パン is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “パン”.\n"
-            "Another modification idea is that the question should clearly indicate what cannot be chosen. The stem must specify the context in which one option is clearly inappropriate, while all other options are suitable.\n"
-            "For example, in the stem 'その 映画は ( 　　　　　 ) ではありません', options like “つまらない”, “面白い”, and “怖い” are appropriate descriptors for a film, but “おいしい” is not, making it the correct answer. If the question asks an obvious 'no' (choose the most inappropriate one), make sure the question stem itself is in negative form “ません”.\n"
-            "So in these options, ignore the culture background and avoid subjective consciousness questions and options\n"
-            "6. If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions. Do not show the right answer in the question stem.\n"
-            "If the question is ask a katakana word's hiragana, make sure the word in the question is katakana and all the options are hiragana, and do not show right answer in the question.\n"
-            "If the question is ask a hiragana word's katakana, make sure the word in the question is hiragana and all the options are katakana, and do not show right answer in the question.\n"
-            "If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. \n"
-            "The new questions should be in a multiple-choice format and appropriate for the Japanese Language Proficiency Test N3 level.\n"
-            "Please create {num_questions} new questions, each with four different options. Ensure that only one of these options is correct and should be evenly distributed among 1, 2, 3, and 4.\n"
-            "The instruction of the questions should be attached in front of each question. \n"
-            "Finally, all the answers will be attached at the end. Do not attach the answer after each question."
-        )
-        
         chain_one = LLMChain(llm=llm, prompt=prompt_one)
 
-        inputs_one = {
-            'matching_knowledge_points':matching,
-            'error_report': rows,
-            'num_questions': 20
-        }
         revise_result = chain_one.run(inputs_one)
         output_doc = Document()
         sentences = self.split_into_sentences(revise_result)
@@ -335,7 +368,7 @@ class DocumentProcessor:
             "Now here are the knowledge points of Japanese language test :{material}, it includes vocabulary and grammar knowledge of Japanese.\
             Please use it as a reference to matching this list of questions which belongs to Japanese test exam: {error_report}.\
             You need to find the corresponding specific knowledge point that the question want to test for each question. For example if the question is asked about grammar of a word, specificly give the part of speech of the word. \
-            Given the content of the original questions and all the options, attach the corresponding knowledge points with them. ")
+            You should keep the content of the original questions and all the options, attach the corresponding knowledge points with them. ")
         
         chain_four = LLMChain(llm=llm, prompt = prompt_four)
         input_four = {'material': meterial_paper,
@@ -493,50 +526,52 @@ class DocumentProcessor:
         os.makedirs(self.mistake_database, exist_ok=True)
 
 
-        # process the material and match the knowledge points
+        # process the material and match the knowledge points of the exam paper
         material = process_material(self.material_folder)
-        paper = read_docx_to_string_with_format(input_paper)
-
-        self.knowledge_points_match(paper, material, "exam paper")
+        # paper = read_docx_to_string_with_format(input_paper)
+        # match_result = self.knowledge_points_match(paper, material, "exam paper")
 
         # Iterate over all .docx files in the input folder
-        # for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
-        #     # Get the filename without the extension
-        #     filename = os.path.splitext(os.path.basename(filepath))[0]
+        # for each student, match knowledge points
+        for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
+            # Get the filename without the extension
+            filename = os.path.splitext(os.path.basename(filepath))[0]
             
-        #     start_time = time.time()
+            start_time = time.time()
 
-        #     rows = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
-        #     ### 这里打印出来看看
-        #     output_doc = Document()
-        #     # Iterate through each row and add it to the document
-        #     for row in rows:
-        #         # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
-        #         mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
-        #         output_doc.add_paragraph(mistake_entry)
+            rows_ = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
+            rows = rows_[0]
+            mistake_count = rows_[1]
+            ### 这里打印出来看看
+            output_doc = Document()
+            # Iterate through each row and add it to the document
+            for row in rows:
+                # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
+                mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
+                output_doc.add_paragraph(mistake_entry)
 
-        #     # 路径修改
-        #     output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
-        #     output_doc.save(output_path)
-        #     print(f"Completed storing {filename} mistake database.")
+            # 路径修改
+            output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
+            output_doc.save(output_path)
+            print(f"Completed storing {filename} mistake database.")
             
 
-        #     problem_list =[]
-        #     for item in rows:
-        #         problem_list.append(item[2])
+            problem_list =[]
+            for item in rows:
+                problem_list.append(item[2])
             
-        #     matching_result = self.knowledge_points_match(' '.join(problem_list), material, filename)
-        #     end_time = time.time()
-        #     print(f"Completed knowledge points match of {filename} in: {end_time - start_time:.2f} seconds")
+            matching_result = self.knowledge_points_match(' '.join(problem_list), material, filename)
+            end_time = time.time()
+            print(f"Completed knowledge points match of {filename} in: {end_time - start_time:.2f} seconds")
 
             # 还未把match好的知识点放到knowledge point analysis 里
-            # self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
+            self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
             # paper_revise还要修改
-            # self.paper_revise(' '.join(problem_list), matching_result, filename)
+            self.paper_revise(' '.join(problem_list), matching_result, material, mistake_count, filename)
 
-            # end_time = time.time()
+            end_time = time.time()
 
-            # print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
+            print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
 
         # Iterate over all the new question files and fix them
         # for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
@@ -584,6 +619,7 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
     answer = return_revised_result(question_path, right_answer_path, wrong_answer_path, filename)
     revised_problem_answer_list = answer[0]
     right_or_not = answer[1]
+    mistake_count = answer[2]
 
     cursor = db.cursor()
     
@@ -600,7 +636,7 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
     cursor.execute(select_mistake_query, (student_id,))
     rows = cursor.fetchall()
 
-    return rows
+    return rows,mistake_count
 
 
 

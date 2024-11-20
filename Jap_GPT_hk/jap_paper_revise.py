@@ -352,19 +352,21 @@ def return_revised_result(question_path,right_answer_path,wrong_answer_path, fil
 
     revise_result_all = []
     right_or_wrong = [] #right 0, wrong1
+    mistake_count = 0
     for difference in differences:
         problem_number = difference[0]
         right_option = difference[1]
         wrong_option = difference[2]
         if right_option!=wrong_option:
             right_or_wrong.append(1)
+            mistake_count += 1
         else:
             right_or_wrong.append(0)
         revise_result = d[problem_number+1] + "\n" + "the right option is: " +right_option +"\n"+"the student choose: "+wrong_option
         
         revise_result_all.append(revise_result)
 
-    return revise_result_all,right_or_wrong
+    return revise_result_all,right_or_wrong,mistake_count
 
 
 # def check_underline(file):
