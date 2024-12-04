@@ -60,20 +60,17 @@ def process_material(meterial_folder):
         material_doc.append(read_docx_to_string_with_format(filepath))
     return material_doc
 
-def knowledge_points_match(self, rows, meterial_paper, filename):
+def knowledge_points_questions_generate(path, meterial_paper):
         llm = ChatOpenAI(
             temperature=0.8,
             model="gpt-4o"
         )
         prompt_four = ChatPromptTemplate.from_template(
             "Now here are the knowledge points of Japanese language test :{material}, it includes vocabulary and grammar knowledge of Japanese.\
-            Please use it as a reference to matching this list of incorrect answers provided by Japanese language students: {error_report}.\
-            You need to find the corresponding knowledge point for each incorrect answer.\
-            Given the content of the original questions and all the options, attach the corresponding knowledge points with them. ")
+            Please use this material as a reference and give a corresponding question for each knowledge point, all the knowledge points should have its question. ")
         
         chain_four = LLMChain(llm=llm, prompt = prompt_four)
-        input_four = {'material': meterial_paper,
-                      'error_report': rows}
+        input_four = {'material': meterial_paper}
         
         matching_result = chain_four.run(input_four)
 
@@ -85,19 +82,18 @@ def knowledge_points_match(self, rows, meterial_paper, filename):
             
 
         # 路径修改
-        output_path = os.path.join(self.matched_knowledge_points_folder, f"{filename}_knowledge_points.docx")
+        output_path = os.path.join(path, f"All_questions_corresponding_knowledge_points.docx")
         output_doc.save(output_path)
 
         return matching_result
 def main():
-    material_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Jap_GPT_hk\\test 1 paper\\Test 1 Question Paper.docx"
-    # paper = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\test 1 paper\\Test 1 Question Paper.docx"
-    # question_type = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\test 1 paper"
-    # document = Document(paper)
-    # text = ""
-    # for paragraph in document.paragraphs:
-    #     text += paragraph.text
-    # result = knowledge_point_analysis(text,question_type)
+    paper = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\TDLEG learning materials\\N4 Notes 語彙_processed.docx"
+    save_path = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\TDLEG learning materials"
+    document = Document(paper)
+    text = ""
+    for paragraph in document.paragraphs:
+        text += paragraph.text
+    result = knowledge_points_questions_generate(save_path,text)
     
 
 

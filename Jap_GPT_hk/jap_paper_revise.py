@@ -212,6 +212,12 @@ def generate_question_separators(max_questions: int):
         return circled_numbers
 
 # 生成产生的新题目的题号
+def generate_question_revise_separators(max_questions:int):
+    circled_numbers = []
+    for i in range(1, max_questions + 1):
+        circled_numbers.append("**"+str(i) + "**")
+    return circled_numbers
+
 def generate_question_numbers(max_questions:int):
     circled_numbers = []
     for i in range(1, max_questions + 1):
@@ -310,24 +316,19 @@ def produce_split_question_list(input_file, filename):
     return split_result_copy
 
 # 切割新生成的题目
-def produce_split_new_question_list(input_file, filename):
-    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-    file_name = f"{filename} {timestamp}.docx"
-    output_file_path = os.path.join("C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\jap_GPT_hk\\sample\\processed new paper", file_name)
-    clean_document(input_file,output_file_path)
-    #这里clean_document()成功保留原格式，包括下划线粗体等，但下面read_docx_to_string还是将格式drop了
+def produce_split_new_question_list(input_file):
 
-    # d = read_docx_to_string(output_file_path)
-    d = read_docx_to_string_with_format(output_file_path)
-    question_sep = generate_question_numbers(20)
-    split_result = split_text_with_separators(d, question_sep)
+    question_sep = generate_question_revise_separators(20)
+    question_sep.append("**Answers**")
+    split_result = split_text_with_separators(input_file, question_sep)
 
     split_result_copy = []
     ques_type =" "
 
     for element in split_result:
         split_result_copy.append(ques_type+"\n"+element)
-    
+    split_result_copy.pop(0)
+    split_result_copy.pop()
     return split_result_copy
 
 """
@@ -370,3 +371,8 @@ def return_revised_result(question_path,right_answer_path,wrong_answer_path, fil
 
 
 # def check_underline(file):
+def main():
+    print("1")
+    
+if __name__ == "__main__":
+    main()

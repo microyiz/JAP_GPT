@@ -209,14 +209,14 @@ class DocumentProcessor:
                 "For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. A better example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. パン 4. 花', where only パン is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “パン”.\n"
                 "Another modification idea is that the question should clearly indicate what cannot be chosen. The stem must specify the context in which one option is clearly inappropriate, while all other options are suitable.\n"
                 "For example, in the stem 'その 映画は ( 　　　　　 ) ではありません', options like “つまらない”, “面白い”, and “怖い” are appropriate descriptors for a film, but “おいしい” is not, making it the correct answer. If the question asks an obvious 'no' (choose the most inappropriate one), make sure the question stem itself is in negative form “ません”.\n"
-                "So in these options, ignore the culture background and avoid subjective consciousness questions and options\n"
+                "So in these options, ignore the culture background and avoid subjective consciousness questions and options. There is a good example: この料理は 塩が （ ）。1. 入っています 2. 入れておきます 3. 入れています 4. 入ってあります Correct answer: 1. 入っています Wrong answer: 2. が àを 入れておきます 3. が àを 入れていますThe Information is: 1. 自動詞 Intransitive verb 不及物動詞 が 入る はいる 2. 他動詞Transitive verb 及物動詞 を 入れる    いれる. You can imitate this to make questions\n"
                 "6. If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions. Do not show the right answer in the question stem.\n"
                 "If the question is ask a katakana word's hiragana, make sure the word in the question is katakana and all the options are hiragana, and do not show right answer in the question.\n"
                 "If the question is ask a hiragana word's katakana, make sure the word in the question is hiragana and all the options are katakana, and do not show right answer in the question.\n"
                 "If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. \n"
                 "The new questions should be in a multiple-choice format and appropriate for the Japanese Language Proficiency Test N3 level.\n"
                 "Please create {num_questions} new questions, each with four different options. Ensure that only one of these options is correct and should be evenly distributed among 1, 2, 3, and 4.\n"
-                "The instruction of the questions should be attached in front of each question. \n"
+                "The instruction of the questions should be attached in front of each question. Do not have hints on the questions. The numbers of the questions should be in this format: **1**. The intruction of answer list should be **Answers**.\n"
                 "Finally, all the answers will be attached at the end. Do not attach the answer after each question."
             )
             
@@ -247,7 +247,7 @@ class DocumentProcessor:
                 "If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. \n"
                 "The new questions should be in a multiple-choice format and appropriate for the Japanese Language Proficiency Test N3 level.\n"
                 "Please create {num_questions} new questions, each with four different options. Ensure that only one of these options is correct and should be evenly distributed among 1, 2, 3, and 4.\n"
-                "The instruction of the questions should be attached in front of each question. Do not have hints on the questions. \n"
+                "The instruction of the questions should be attached in front of each question. Do not have hints on the questions. The numbers of the questions should be in this format: **1**. The intruction of answer list should be **Answers**.\n"
                 "Finally, all the answers will be attached at the end. Do not attach the answer after each question."
             )
             
@@ -261,9 +261,13 @@ class DocumentProcessor:
         chain_one = LLMChain(llm=llm, prompt=prompt_one)
 
         revise_result = chain_one.run(inputs_one)
+
         output_doc = Document()
         sentences = self.split_into_sentences(revise_result)
+    
         for sentence in sentences:
+            # 纠正格式
+            sentence.replace("**Answers:**", "**Answers**")
             output_doc.add_paragraph(sentence)
 
         output_path = os.path.join(self.output_folder, f"{filename}_new_report.docx")
@@ -337,6 +341,13 @@ class DocumentProcessor:
             If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. Do not add questions. \
             Report the changes made at last of the file."
         )
+        rows, answer_list = self.loop_each_question(rows)
+        final_answer_list = []
+        for i in range(20):
+            question_number = str(i+1) + ". "
+            final_answer_list.append(question_number + answer_list[i])
+        answers = "**Answers**"+ "\n"+'\n'.join(final_answer_list)
+        rows = rows + answers
 
         chain_three = LLMChain(llm=llm, prompt = prompt_three)
         input_three = {'new_paper': rows}
@@ -347,7 +358,7 @@ class DocumentProcessor:
                 input_three['new_paper'] = revise_result
             else:
                 break  # Exit loop if no errors are found
-       
+
         output_doc = Document()
         sentences = self.split_into_sentences(revise_result)
         
@@ -365,10 +376,10 @@ class DocumentProcessor:
             model="gpt-4o"
         )
         prompt_four = ChatPromptTemplate.from_template(
-            "Now here are the knowledge points of Japanese language test :{material}, it includes vocabulary and grammar knowledge of Japanese.\
-            Please use it as a reference to matching this list of questions which belongs to Japanese test exam: {error_report}.\
-            You need to find the corresponding specific knowledge point that the question want to test for each question. For example if the question is asked about grammar of a word, specificly give the part of speech of the word. \
-            You should keep the content of the original questions and all the options, attach the corresponding knowledge points with them. ")
+            "Now here are the knowledge points list of Japanese language test :{material}, it includes vocabulary and grammar knowledge of Japanese.\
+            Please use it as a reference to matching this list of questions which belongs to Japanese test exam: {error_report}. You need to match every question !\
+            You need to find the corresponding specific knowledge points that the question stem and options contain for each question, there may be multiple knowledge points for each question, you need to find all of them. For example if the question is asked about grammar or vocabulary of several combination words, specifically give the list numbers of these words, and which part they belong to: vocabulary or grammar. \
+            You should give the whole content, include the stem and all the four original options of the original questions, attach the corresponding knowledge points with them.")
         
         chain_four = LLMChain(llm=llm, prompt = prompt_four)
         input_four = {'material': meterial_paper,
@@ -419,7 +430,6 @@ class DocumentProcessor:
             return True
 
         return False  # No errors detected
-    
     
 
     def has_multiple_correct_answers(self, text):
@@ -511,6 +521,80 @@ class DocumentProcessor:
                 return True
         return False
 
+    # check each question
+    def loop_question(self, question, max_iterations):
+        llm = ChatOpenAI(
+            temperature= 0.6,
+            model="gpt-4o"
+        )
+        prompt = ChatPromptTemplate.from_template(
+            "Now here is a Japanese practice question:{question}, please revise it to make sure that the question stem and the options have no grammarly error.\
+            You should put the options back to the blank in the stem one by one, then check if the sentence has any grammar error, if so, modify it.\
+            Then you need to check if there are multiple correct options for this question, if so, please revise the question stem or the options to make sure this question has only one correct answer. \
+            Please not have two or more than two suitable answers to choose the most suitable one, make sure it has only one suitable answer that is absolutely correct, you can add specific condition in the question stem or change the options.\
+            Only output the modified question and a single number which is the correct option of this question at last. Do not include the analysis."
+        )
+        # 目前问题，还是有答案错误的
+        chain = LLMChain(llm=llm, prompt = prompt)
+        input = {'question':question}
+
+        for iteration in range(max_iterations):
+            revise_result = chain.run(input)
+            if self.question_check(revise_result):  # Implement this method to validate output
+                input['question'] = revise_result
+            else:
+                break  # Exit loop if no errors are found
+        return revise_result
+
+
+
+
+    def question_check(self, question):
+        llm = ChatOpenAI(
+            temperature=0.6,  # Adjusted for more deterministic behavior
+            model="gpt-4o"
+        )
+        prompt = ChatPromptTemplate.from_template(
+            "Now here is a Japanese practice question:{question}, each one has four options. You need to put back each options to the question stem to check if there is any grammar issue or just check if the stem has any grammar issue.\
+            If there are grammar issues, only output a single word: True, otherwise just output a single word: False. Do not output the analysis."
+        )
+
+        chain = LLMChain(llm=llm, prompt = prompt)
+        input = {'question': question}
+
+        result = chain.run(input)
+        for i in range(50):
+            if(result == 'True' or result == 'true' or result == 'False' or result == 'False'):
+                break
+            else:
+                result = chain.run(input)
+
+        bool_dict = {"True": True, "False": False, "true": True, "false":False}
+
+        return bool_dict[result]
+    
+    def get_answer(self,question):
+        return question[len(question)-1]
+    
+    def loop_each_question(self, questions):
+        # questions 是从gpt直接生成的result
+        question_list = produce_split_new_question_list(questions)
+        question_number = 1
+        new_question_list = []
+        answer_list = []
+        for question in question_list:
+            revised_question = self.loop_question(question, 10)
+            answer = self.get_answer(revised_question)
+            answer_list.append(answer)
+            revised_question = revised_question[:-1]
+
+            new_question_list.append( "**"+ str(question_number)+"**" +revised_question)
+
+            print(revised_question)
+            print("end of question:",question_number)
+            question_number += 1
+
+        return '\n'.join(new_question_list), answer_list
 
     def process(self, input_paper, correct_answers_path, sample_analysis):
         """
@@ -533,58 +617,58 @@ class DocumentProcessor:
 
         # Iterate over all .docx files in the input folder
         # for each student, match knowledge points
-        for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
-            # Get the filename without the extension
-            filename = os.path.splitext(os.path.basename(filepath))[0]
-            
-            start_time = time.time()
-
-            rows_ = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
-            rows = rows_[0]
-            mistake_count = rows_[1]
-            ### 这里打印出来看看
-            output_doc = Document()
-            # Iterate through each row and add it to the document
-            for row in rows:
-                # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
-                mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
-                output_doc.add_paragraph(mistake_entry)
-
-            # 路径修改
-            output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
-            output_doc.save(output_path)
-            print(f"Completed storing {filename} mistake database.")
-            
-
-            problem_list =[]
-            for item in rows:
-                problem_list.append(item[2])
-            
-            matching_result = self.knowledge_points_match(' '.join(problem_list), material, filename)
-            end_time = time.time()
-            print(f"Completed knowledge points match of {filename} in: {end_time - start_time:.2f} seconds")
-
-            # 还未把match好的知识点放到knowledge point analysis 里
-            self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
-            # paper_revise还要修改
-            self.paper_revise(' '.join(problem_list), matching_result, material, mistake_count, filename)
-
-            end_time = time.time()
-
-            print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
-
-        # Iterate over all the new question files and fix them
-        # for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
-
+        # for filepath in glob.glob(os.path.join(self.input_folder, "*.docx")):
+        #     # Get the filename without the extension
         #     filename = os.path.splitext(os.path.basename(filepath))[0]
             
         #     start_time = time.time()
 
-        #     new_que = read_docx_to_string_with_format(filepath)
-        #     self.question_revise(new_que, filename)
+        #     rows_ = process_paper_and_store_results(input_paper, correct_answers_path, filepath)
+        #     rows = rows_[0]
+        #     mistake_count = rows_[1]
+        #     ### 这里打印出来看看
+        #     output_doc = Document()
+        #     # Iterate through each row and add it to the document
+        #     for row in rows:
+        #         # Assuming each row is a tuple; format it as desired (e.g., join elements with a separator)
+        #         mistake_entry = ', '.join(str(item) for item in row)  # Convert each item to string and join
+        #         output_doc.add_paragraph(mistake_entry)
+
+        #     # 路径修改
+        #     output_path = os.path.join(self.mistake_database, f"{filename}_mistake_database.docx")
+        #     output_doc.save(output_path)
+        #     print(f"Completed storing {filename} mistake database.")
+            
+
+        #     problem_list =[]
+        #     for item in rows:
+        #         problem_list.append(item[2])
+            
+        #     matching_result = self.knowledge_points_match(' '.join(problem_list), material, filename)
+        #     end_time = time.time()
+        #     print(f"Completed knowledge points match of {filename} in: {end_time - start_time:.2f} seconds")
+
+        #     # 还未把match好的知识点放到knowledge point analysis 里
+        #     self.knowledge_point_analysis(' '.join(problem_list), filename, sample_analysis)
+        #     # paper_revise还要修改
+        #     self.paper_revise(' '.join(problem_list), matching_result, material, mistake_count, filename)
 
         #     end_time = time.time()
-        #     print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
+
+        #     print(f"Completed revising {filename} in: {end_time - start_time:.2f} seconds")
+
+        # Iterate over all the new question files and fix them
+        for filepath in glob.glob(os.path.join(self.output_folder, "*.docx")):
+
+            filename = os.path.splitext(os.path.basename(filepath))[0]
+            
+            start_time = time.time()
+
+            new_que = read_docx_to_string_with_format(filepath)
+            self.question_revise(new_que, filename)
+
+            end_time = time.time()
+            print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
 
 
 
@@ -643,7 +727,7 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
 
 def main():
 
-    material_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\TDLEG learning materials"
+    material_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\TDLEG learning materials\\materials"
     # input_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\student paper"
     # output_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\New Paper"
     # output_mistakes_folder = "C:\\Users\\30998\\Desktop\\JAP_GPT\\template paper from CUHK\\Test1\\Student Mistakes"
