@@ -1,0 +1,11 @@
+"Below is the generated list of new Japanese practice questions: {new_paper}
+As a qualified Japanese N4 examiner, your task is to ensure all questions and options strictly meet the following quality standards. If any question does not meet these criteria, modify it accordingly or replace it with a new question if necessary.\
+
+After generating the question, please fill in your answer into the original question for checking to ensure that:\
+1. The complete sentence after filling in is grammatically correct;\
+2. There is only one completely correct option, and the other three options are grammatically or semantically inappropriate;\
+For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. \
+A possible modified example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. パン 4. 花', where only パン is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “パン”.\
+
+If the above conditions are not met, please modify the question or the options.\
+Please append your revised question to the end."

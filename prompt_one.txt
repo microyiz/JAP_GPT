@@ -1,0 +1,51 @@
+"Below is a list of incorrect answers provided by Japanese language students: {error_report}\n"
+            
+"Each question includes the student's incorrect choice and the correct answer and its corresponding knowledge points.\n"
+            
+"Based on these errors, generate new practice questions targeting similar grammar or vocabulary points to help students strengthen their understanding.\n"
+
+"Detailed requirements for the newly generated questions are as follows:\n"
+
+"1.No duplicate questions. All the questions should be unique. Delete any repeated questions and replace them with new ones.\n"
+
+"2.No duplicate options. All options should be unique and meaningful within the context of the question.\n"
+
+"3. No duplicate answers. The answer to the question should be unique in the context of the exam. Please not have two or more than two suitable answer to choose the most suitable one, make sure it has only one suitable answer, you can add specific condition in the question stem or change the options. Specific requirements are as follows:\n"
+
+"3.1. Context clarity. Ensure that the question stem is specific and clear in its intent. Avoid vague or overly general questions where multiple options could be valid in different interpretations.\n"
+
+"For example, if the question is asking about time expressions, make sure the options reflect distinct and non-overlapping time frames (e.g., "after that," "before lunch," etc.), and the context should only allow one correct answer.\n"
+
+"3.2. Distinct Answer Types. Be sure that the options do not repeat the same grammatical structure or meaning.\n"
+
+"For instance, if the question tests polite request forms, the options should differ in their phrasing or politeness levels, and only one should be grammatically correct for the context.\n"
+"If testing verb forms or vocabulary, ensure that each option represents a distinct form, usage, or meaning. Do not use synonyms as options unless one is clearly incorrect for the given context.\n"
+
+"4.Grammatical correctness. The title and stem of the question should be grammatically correct.You can put back the correct option to the question stem, if there is a grammar issue, please revise the question stem and the options.\n"
+
+"Pay attention to the nuances of Japanese grammar (e.g., use of polite vs. casual forms, proper particle usage, correct verb tense) and ensure that only one option fits the intended meaning.\n"
+
+"5.Relevance of options. \n"
+
+"One modification idea is that the correct option should more clearly point to a suitable answer which is reasonable and fits the context of the stem, while ensuring that the other options are clearly inappropriate or incorrect. \n"
+
+"For example, in the question 'わたしは、毎朝（ 　　　　　 ）を飲みます。', all options like お茶, コーヒー, ジュース, and 水 are suitable for the verb 'drink,' which makes the question ambiguous. A better example would be 'わたしは、毎朝（ 　　　　　 ）を食べます。1. お茶 2. コーヒー 3. パン 4. 花', where only パン is an appropriate option for 'eat,' and the other options (お茶, コーヒー, 花) are clearly unsuitable for eating, which makes it a good question because it has only one clear answer “パン”.\n"
+
+"Another modification idea is that the question should clearly indicate what cannot be chosen. The stem must specify the context in which one option is clearly inappropriate, while all other options are suitable.\n"
+
+"For example, in the stem 'その 映画は ( 　　　　　 ) ではありません', options like “つまらない”, “面白い”, and “怖い” are appropriate descriptors for a film, but “おいしい” is not, making it the correct answer. If the question asks an obvious 'no' (choose the most inappropriate one), make sure the question stem itself is in negative form “ません”.\n"
+
+"In these options, ignore the culture background and avoid subjective consciousness questions and options.\n"
+
+"6. If the question is about the pronunciation of a word or how a particular word is used or its katakana, hiragana, use the brackets to emphasize the Japanese words. Do not have any underline in the questions. Do not show the right answer in the question stem.\n"
+
+"If the question is ask a katakana word's hiragana, make sure the word in the question is katakana and all the options are hiragana, and do not show right answer in the question.\n"
+
+"If the question is ask a hiragana word's katakana, make sure the word in the question is hiragana and all the options are katakana, and do not show right answer in the question.\n"
+
+"If any of the above problems occur, please modify the questions to eliminate these issues. Ensure that the structure remains the same as the original questions, and all answers should be attached at the end. Do not attach the answer after each question. \n"
+            
+"The new questions should be in a multiple-choice format and appropriate for the Japanese Language Proficiency Test N3 level.\n"
+"Please create {num_questions} new questions, each with four different options. Ensure that only one of these options is correct and should be evenly distributed among 1, 2, 3, and 4.\n"
+"The instruction of the questions should be attached in front of the whole paper. Do not attach it in front of each question.\n"
+"Finally, all the answers will be attached at the end. Do not attach the answer after each question."

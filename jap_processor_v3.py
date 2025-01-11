@@ -554,15 +554,15 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
 
 
 def main():
-    input_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\student paper"
-    output_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\New Paper"
-    output_mistakes_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Student Mistakes"
-    output_analysis_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Knowledge Point Analysis"
-    correct_answers_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\test 1 paper\\Test 1 Model Answer.docx"
-    input_paper = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\test 1 paper\\Test 1 Question Paper.docx"
-    sample_mistake_analysis = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\1155159595 Test 1_sample_mistakes_analysis.doc"
-    Revised_newpaper_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\Test1_new\\Revised_newpaper_folder"
-    
+    input_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\student paper"
+    output_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\New Paper"
+    output_mistakes_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\Student Mistakes"
+    output_analysis_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\Knowledge Point Analysis"
+    correct_answers_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\test 1 paper\\Test 1 Model Answer.docx"
+    input_paper = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\test 1 paper\\Test 1 Question Paper.docx"
+    sample_mistake_analysis = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\1155159595 Test 1_sample_mistakes_analysis.doc"
+    Revised_newpaper_folder = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\基于大模型的学习平台开发\\template paper from CUHK\\JAP_GPT\\Test1_new\\Revised_newpaper_folder"
+    # "C:\Users\刘宇\OneDrive - CUHK-Shenzhen\桌面\基于大模型的学习平台开发\template paper from CUHK\JAP_GPT\Test1_new"
 
     checker = AnswerChecker(correct_answers_path, input_folder, output_mistakes_folder)
     checker.process_all_files()

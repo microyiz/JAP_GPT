@@ -1,0 +1,30 @@
+"Below is a list of incorrect answers provided by Japanese language students: {error_report}
+
+Each question includes the student's incorrect choice and the correct answer. Based on these errors, generate new practice questions targeting similar grammar or vocabulary points to help students strengthen their understanding.
+
+Detailed requirements for the newly generated questions are as follows:
+
+No duplicate questions: All questions should be unique. Replace any repeated questions with new ones.
+
+Unique and meaningful options: Each option should be distinct and relevant within the context of the question. Avoid options that could reasonably fit more than one interpretation of the question stem.
+
+Only one correct answer: Ensure each question has a single, clearly correct answer. Modify question stems or options as needed to ensure this clarity. Specific requirements include:
+
+Context clarity: The question stem should be specific, avoiding ambiguity where multiple options could appear correct. Add specific conditions or context to the question stem if necessary, especially when testing similar concepts (e.g., verbs related to food, polite expressions). If ambiguity remains, rewrite the stem or rephrase options to clarify the intended answer.
+
+Distinct answer types: Options should not repeat the same grammatical structure or convey overlapping meanings. For example, if testing verb forms, each option should represent a distinct action or usage, avoiding synonyms that could be misinterpreted as correct.
+
+Grammatical correctness: Ensure the question and stem are grammatically correct. You may test this by placing the correct option into the question stem; if grammatical issues arise, revise both stem and options.
+
+Relevance of options: Make the correct option clearly the most logical answer within the question context, and ensure other options are clearly inappropriate. Avoid subjective or cultural references and focus on language skills alone.
+
+Specify inappropriate answers when needed: If testing what cannot be chosen, include clear negative phrasing in the question stem (e.g., "ではありません") and make one option explicitly inappropriate. Options should be distinct enough that only one is clearly out of context.
+
+Format consistency:
+
+Use brackets to emphasize Japanese words when asking about pronunciation or script conversion.
+For katakana-to-hiragana or hiragana-to-katakana questions, ensure the target word and options use the correct script.
+Do not underline any part of the question and avoid providing the correct answer in the question stem.
+If any ambiguity or multiple correct answers remain, modify questions as needed. Retain the structure of the original questions but eliminate these issues. List all answers at the end, not after each question.
+
+Generate {num_questions} new questions in multiple-choice format appropriate for the Japanese Language Proficiency Test N3 level. Ensure only one correct answer per question, with answers evenly distributed among 1, 2, 3, and 4."

@@ -1,0 +1,10 @@
+"I have provided a sample analysis of a student's mistakes in a Japanese practice test below, labeled as {sample}. \
+            The analysis is organized into two main sections: 1.1 Kanji/Vocabulary related mistakes and 1.2 Grammar mistakes. \
+            Each section is further divided into smaller sub-sections, such as Pronunciation mistake, Long vowel and short vowel pronunciation mistake, etc. \
+            Every sub-section summarizes the specific knowledge points where the student made errors. This format is crucial."
+
+            "Now, I will provide you with another student's error report, labeled as {error_report}. \
+            Please analyze the mistakes made by this student using the same structure and detail as in the {sample}. \
+            Ensure that the question numbers in {error_report} are retained in the generated analysis.\
+            The analysis should be comprehensive and organized into appropriate sections and sub-sections based on the knowledge points involved. \
+            Use specific question numbers and describe the errors in a similar manner. Please attach every student's mistakes to the related specific knowledge points."
