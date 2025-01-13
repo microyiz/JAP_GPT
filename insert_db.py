@@ -8,7 +8,8 @@ import os
 import glob
 from docx import Document
 from db_util import drop_table_query ,create_table_query ,insert_query,show_fiverows_query,select_mistake_query,db
-from db_question_students_results import insert_questions_query, insert_students_query,insert_exam_results_query,select_mistake_query,select_all_query,db
+from db_question_students_results import insert_questions_query, insert_students_query, insert_exam_results_query,select_mistake_query,select_all_query,db
+from join_search import join_search
 
 '''
 # 连接到 MySQL 数据库
@@ -179,8 +180,6 @@ def process_students_results(question_path, wrong_answer_path):
     return rows
 
 '''
-
-
 
 
 '''
@@ -427,7 +426,7 @@ def process_exam_results(question_path, right_answer_path, wrong_answer_path):
 '''
 
 
-def insert_or_update_student(student_no, student_name):
+def insert_or_update_student(student_no, student_name, student_email):
     cursor = db.cursor()
     
     # 检查学生是否已经存在
@@ -436,13 +435,13 @@ def insert_or_update_student(student_no, student_name):
 
     if existing_student:
         # 学生已经存在，更新学生信息
-        cursor.execute("UPDATE students SET name = %s WHERE student_no = %s", (student_name, student_no))
+        cursor.execute("UPDATE students SET name = %s WHERE student_no = %s", (student_name, student_no, student_email))
         db.commit()
         print(f"Student {student_no} updated")
         return existing_student[0]  # 返回已有的 student_id
     else:
         # 学生不存在，插入新记录
-        cursor.execute("INSERT INTO students (student_no, name) VALUES (%s, %s)", (student_no, student_name))
+        cursor.execute(insert_students_query, (student_no, student_name, student_email))
         db.commit()
         student_id = cursor.lastrowid
         print(f"Student {student_no} inserted")
@@ -462,7 +461,7 @@ def insert_or_update_question(question_index, content, correct_answer, knowledge
         print(f"Error inserting/updating question {question_index}: {e}")
         return None
 
-
+'''
 def process_exam_results(question_path, right_answer_path, wrong_answer_path):
     """处理学生考试结果"""
     # 获取文件名和学生学号
@@ -515,12 +514,12 @@ def process_exam_results(question_path, right_answer_path, wrong_answer_path):
     db.commit()
 
     # 查询学生的错误
-    cursor.execute(select_mistake_query, (student_id,))
+    cursor.execute(select_mistake_query)
     rows = cursor.fetchall()
     print(f"Incorrect answers for student_id {student_id}: {rows}")
 
     return rows
-
+'''
 
 '''
 def process_paper_and_store_results(question_path, right_answer_path, wrong_answer_path):
@@ -550,6 +549,93 @@ def process_paper_and_store_results(question_path, right_answer_path, wrong_answ
 
     return rows
 '''
+
+def process_student_results(question_path, right_answer_path, wrong_answer_path):
+    """处理学生的考试结果并插入数据库"""
+    # 获取文件名 学生学号/邮箱 学生答案
+    filename = os.path.splitext(os.path.basename(question_path))[0]
+    student_no = extract_student_id(wrong_answer_path)  # 提取学生学号
+    student_name = read_name_from_docx(wrong_answer_path)  # 提取学生姓名
+    student_email = f"{student_no}@link.cuhk.edu.cn"  # 自动生成学生邮箱
+    student_answer = read_answers_from_docx(wrong_answer_path)
+
+    # 插入/更新学生信息
+    student_id = insert_or_update_student(student_no, student_name, student_email)
+    if student_id is None:
+        return None
+
+    print(f"Processing paper for student_no: {student_no}, filename: {filename}")
+
+    # 获取修正后的结果
+    paper_content = return_paper(question_path, right_answer_path, filename)
+    revised_problem_list = paper_content[0]
+    revised_knowledge_points = paper_content[1]
+    revised_difficulty_level = paper_content[2]
+
+    answer = return_revised_result(question_path, right_answer_path, wrong_answer_path, filename)
+    right_or_not = answer[1]
+    # 获取正确答案
+    right_option = read_answers_from_docx(right_answer_path)
+
+    # 插入/更新题目数据
+    for i in range(len(revised_problem_list)):
+        question_index = f"{filename}{i}"
+        content = revised_problem_list[i]
+        correct_answer = right_option[i]
+        knowledge_points = revised_knowledge_points[i]
+        difficulty_level = revised_difficulty_level[i]
+        insert_or_update_question(question_index, content, correct_answer, knowledge_points, difficulty_level)
+
+    # 清理 exam_results 表中与当前学生相关的记录
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM exam_results WHERE student_id = %s", (student_id,))
+    db.commit()
+
+    # 插入考试结果
+    for i in range(len(right_or_not)):
+        question_index = f"{filename}{i}"
+        cursor.execute("SELECT question_id FROM questions WHERE question_index = %s", (question_index,))
+        question_row = cursor.fetchone()
+        if not question_row:
+            print(f"Question not found for index: {question_index}")
+            continue
+        question_id = question_row[0]
+        cursor.execute(insert_exam_results_query, (question_id, student_id, student_answer[i], right_or_not[i]))
+    db.commit()
+
+    # 查询学生的错误
+    cursor.execute(select_mistake_query)
+    rows = cursor.fetchall()
+    print(f"Incorrect answers for student_id {student_id}: {rows}")
+
+    return rows
+
+def process_and_save_to_word(question_path, right_answer_path, wrong_answer_path, sample_output):
+    """处理考试结果并保存到 Word 文档"""
+    # 处理学生考试结果
+    process_student_results(question_path, right_answer_path, wrong_answer_path)
+
+    # 查询数据库中的数据
+    cursor = db.cursor()
+
+    # 查询 students 表数据
+    cursor.execute("SELECT student_no, name, email FROM students")
+    students = cursor.fetchall()
+    students_data = [{"student_no": row[0], "name": row[1], "email": row[2]} for row in students]
+
+    # 查询 questions 表数据
+    cursor.execute("SELECT question_index, content, correct_answer, type, level, is_gpt FROM questions")
+    questions = cursor.fetchall()
+    questions_data = [{"question_index": row[0], "content": row[1], "correct_answer": row[2], "type": row[3], "level": row[4], "is_gpt": row[5]} for row in questions]
+
+    # 查询 exam_results 表数据
+    cursor.execute("SELECT DISTINCT result_id, question_id, student_id, student_answer, is_correct FROM exam_results")
+    exam_results = cursor.fetchall()
+    exam_results_data = [{"result_id": row[0], "question_id": row[1], "student_id": row[2], "student_answer": row[3], "is_correct": row[4]} for row in exam_results]
+
+    # 保存到 Word 文档
+    save_to_word(students_data, questions_data, exam_results_data, sample_output)
+
 
 # 保存数据到 Word 文档
 def save_to_word(students, questions, exam_results, sample_output):
@@ -618,78 +704,78 @@ def save_to_word(students, questions, exam_results, sample_output):
     doc.save(sample_output)
     print(f"Report saved")
 
-# 处理考试结果并保存数据到 Word 文档
-def process_and_save_to_word(question_path, right_answer_path, wrong_answer_path, sample_output):
-    # 假设 students, questions 和 exam_results 数据已经处理好并存在
-    cursor = db.cursor()
+# # 处理考试结果并保存数据到 Word 文档
+# def process_and_save_to_word(question_path, right_answer_path, wrong_answer_path, sample_output):
+#     # 假设 students, questions 和 exam_results 数据已经处理好并存在
+#     cursor = db.cursor()
 
-    # 查询 students 表数据
-    cursor.execute("SELECT student_no, name, email FROM students")
-    students = cursor.fetchall()
-    students_data = [{"student_no": row[0], "name": row[1], "email": row[2]} for row in students]
+#     # 查询 students 表数据
+#     cursor.execute("SELECT student_no, name, email FROM students")
+#     students = cursor.fetchall()
+#     students_data = [{"student_no": row[0], "name": row[1], "email": row[2]} for row in students]
 
-    # 查询 questions 表数据
-    cursor.execute("SELECT question_index, content, correct_answer, type, level, is_gpt FROM questions")
-    questions = cursor.fetchall()
-    questions_data = [{"question_index": row[0], "content": row[1], "correct_answer": row[2], "type": row[3], "level": row[4], "is_gpt": row[5]} for row in questions]
+#     # 查询 questions 表数据
+#     cursor.execute("SELECT question_index, content, correct_answer, type, level, is_gpt FROM questions")
+#     questions = cursor.fetchall()
+#     questions_data = [{"question_index": row[0], "content": row[1], "correct_answer": row[2], "type": row[3], "level": row[4], "is_gpt": row[5]} for row in questions]
 
-    # 查询 exam_results 表数据并去重
-    cursor.execute("SELECT DISTINCT result_id, question_id, student_id, student_answer, is_correct FROM exam_results")
-    exam_results = cursor.fetchall()
-    exam_results_data = [{"result_id": row[0], "question_id": row[1], "student_id": row[2], "student_answer": row[3], "is_correct": row[4]} for row in exam_results]
+#     # 查询 exam_results 表数据并去重
+#     cursor.execute("SELECT DISTINCT result_id, question_id, student_id, student_answer, is_correct FROM exam_results")
+#     exam_results = cursor.fetchall()
+#     exam_results_data = [{"result_id": row[0], "question_id": row[1], "student_id": row[2], "student_answer": row[3], "is_correct": row[4]} for row in exam_results]
 
-    # 去重：确保没有重复的记录（如果查询时未完全去重，可以在此处处理）
-    exam_results_data = list({v['result_id']: v for v in exam_results_data}.values())
+#     # 去重：确保没有重复的记录（如果查询时未完全去重，可以在此处处理）
+#     exam_results_data = list({v['result_id']: v for v in exam_results_data}.values())
 
-    # 处理学生考试结果
-    student_no = extract_student_id(wrong_answer_path)  # 提取学生学号
-    student_name = read_name_from_docx(wrong_answer_path)  # 提取学生姓名
-    student_answer = read_answers_from_docx(wrong_answer_path)
+#     # 处理学生考试结果
+#     student_no = extract_student_id(wrong_answer_path)  # 提取学生学号
+#     student_name = read_name_from_docx(wrong_answer_path)  # 提取学生姓名
+#     student_answer = read_answers_from_docx(wrong_answer_path)
 
-    # 插入/更新学生信息
-    student_id = insert_or_update_student(student_no, student_name)
-    if student_id is None:
-        return None
+#     # 插入/更新学生信息
+#     student_id = insert_or_update_student(student_no, student_name)
+#     if student_id is None:
+#         return None
 
-    print(f"Processing paper for student_no: {student_no}, filename: {os.path.basename(question_path)}")
+#     print(f"Processing paper for student_no: {student_no}, filename: {os.path.basename(question_path)}")
 
-    # 获取修正后的结果
-    paper_content = return_paper(question_path, right_answer_path, os.path.basename(question_path))
-    revised_problem_list = paper_content[0]
-    revised_knowledge_points = paper_content[1]
-    revised_difficulty_level = paper_content[2]
+#     # 获取修正后的结果
+#     paper_content = return_paper(question_path, right_answer_path, os.path.basename(question_path))
+#     revised_problem_list = paper_content[0]
+#     revised_knowledge_points = paper_content[1]
+#     revised_difficulty_level = paper_content[2]
 
-    answer = return_revised_result(question_path, right_answer_path, wrong_answer_path, os.path.basename(question_path))
-    right_or_not = answer[1]
+#     answer = return_revised_result(question_path, right_answer_path, wrong_answer_path, os.path.basename(question_path))
+#     right_or_not = answer[1]
 
-    # 插入/更新题目数据
-    for i in range(len(revised_problem_list)):
-        question_index = f"{os.path.basename(question_path)}{i}"
-        content = revised_problem_list[i]
-        correct_answer = right_answer_path[i]
-        knowledge_points = revised_knowledge_points[i]
-        difficulty_level = revised_difficulty_level[i]
-        insert_or_update_question(question_index, content, correct_answer, knowledge_points, difficulty_level)
+#     # 插入/更新题目数据
+#     for i in range(len(revised_problem_list)):
+#         question_index = f"{os.path.basename(question_path)}{i}"
+#         content = revised_problem_list[i]
+#         correct_answer = right_answer_path[i]
+#         knowledge_points = revised_knowledge_points[i]
+#         difficulty_level = revised_difficulty_level[i]
+#         insert_or_update_question(question_index, content, correct_answer, knowledge_points, difficulty_level)
 
-    # 清理 exam_results 表中与当前学生相关的记录
-    cursor.execute("DELETE FROM exam_results WHERE student_id = %s", (student_id,))
-    db.commit()
+#     # 清理 exam_results 表中与当前学生相关的记录
+#     cursor.execute("DELETE FROM exam_results WHERE student_id = %s", (student_id,))
+#     db.commit()
 
-    # 插入考试结果
-    for i in range(len(right_or_not)):
-        question_index = f"{os.path.basename(question_path)}{i}"
-        # 查询 question_id
-        cursor.execute("SELECT question_id FROM questions WHERE question_index = %s", (question_index,))
-        question_row = cursor.fetchone()
-        if not question_row:
-            print(f"Question not found for index: {question_index}")
-            continue
-        question_id = question_row[0]
-        cursor.execute(insert_exam_results_query, (question_id, student_id, student_answer[i], right_or_not[i]))
-    db.commit()
+#     # 插入考试结果
+#     for i in range(len(right_or_not)):
+#         question_index = f"{os.path.basename(question_path)}{i}"
+#         # 查询 question_id
+#         cursor.execute("SELECT question_id FROM questions WHERE question_index = %s", (question_index,))
+#         question_row = cursor.fetchone()
+#         if not question_row:
+#             print(f"Question not found for index: {question_index}")
+#             continue
+#         question_id = question_row[0]
+#         cursor.execute(insert_exam_results_query, (question_id, student_id, student_answer[i], right_or_not[i]))
+#     db.commit()
 
-    # 保存到 Word 文档
-    save_to_word(students_data, questions_data, exam_results_data, sample_output)
+#     # 保存到 Word 文档
+#     save_to_word(students_data, questions_data, exam_results_data, sample_output)
 
 
 
@@ -697,12 +783,15 @@ def process_and_save_to_word(question_path, right_answer_path, wrong_answer_path
 def main():
     question_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\processed test paper with knowledge points\\Test 1 Question Paper.docx"
     right_answer_path = "C:\\Users\\刘宇\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\Test1_new\\test 1 paper\\Test 1 Model Answer.docx"
-    wrong_answer_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\Test1_new\\student paper_test\\1155193734 Test 1.docx"
+    #wrong_answer_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\Test1_new\\student paper_test\\1155193734 Test 1.docx"
     input_test_path = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\Test1_new\\student paper_test"
     sample_output = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_db_test.docx"
     
+    for filepath in glob.glob(os.path.join(input_test_path, "*.docx")):
+        process_and_save_to_word(question_path, right_answer_path, filepath, sample_output)
+
+    join_search()
     
-    process_and_save_to_word(question_path, right_answer_path, wrong_answer_path, sample_output)
 
 
 if __name__ == "__main__":
