@@ -3,6 +3,7 @@ import re
 import os
 import glob
 import time
+import string
 import warnings
 import docx
 import mysql.connector
@@ -166,49 +167,6 @@ def grammar_points_revise(vocabulary_list, output, filepath):
         print(f'Processing knowledge point: {knowledge_point}...')
 
         # 动态生成 prompt，要求 GPT 依次为每个词汇出题
-        prompt = ChatPromptTemplate.from_template(
-            f'''
-            You are an experienced Japanese examiner, well-versed in the N4 and N5 levels of the Japanese Language Proficiency Test (JLPT). Your task is to create 10 multiple-choice questions based on the following vocabulary knowledge point: **{knowledge_point}**.
-
-            ### Requirements:
-            1. Each question should have **4 options**, with only **one correct answer**.
-            2. Ensure all options are grammatically correct, unambiguous, and relevant to the question.
-            3. Incorporate the knowledge point into the question clearly.
-            4. Use **at least three** different question formats from the five listed below. Ensure variety across the 10 questions.
-            5. Use square brackets [ ] to indicate blanks or missing parts in the question (e.g., replace underlines with [ ]).
-            6. Prepend the knowledge point you used to generate the question to the front of all questions.
-            7. Attach all your answers at the end of the 10 questions.
-
-            ### Question Formats:
-            （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。 
-                **Example:**  
-                Q1 かれが　手伝って　（  　　　　　 ）　宿題 (しゅくだい) が　終わらなっかった。  
-                1　もらったから			2　くれなかったから		
-                3　ほしいから				4　ほしかったから
-
-                Q2 うちの　子どもは　勉強 (べんきょう) しないで　（  　　　　　 ）　ばかりいる。
-                1　あそび		2　あそぶ		3　あそばない		4　あそんで
-
-                Q3  A　「田中さんは　かのじょが　いますか。」
-	                B　「いいえ、田中さんは　前の　かのじょと　別れてから、人を好き　（  　　　　　 ）。」
-                1　ではありませんでした		2　にならなくなりました		
-                3　でもよくなりました			4　にしなくなりました
-
-
-            **Answer:** 
-            Q1. 2. くれなかったから	
-            Q2. 4. あそんで
-            Q3. 2. にならなくなりました 
-
-
-            ### Additional Notes:
-            - Each question must clearly state the corresponding vocabulary knowledge point at the end.  
-            - Avoid using cultural or subjective biases that could confuse learners.  
-            - Ensure the difficulty level aligns with N4/N5 standards.  
-            - The generated questions must maintain high linguistic and contextual accuracy.
-            '''
-        )
-
         prompt_grammar = ChatPromptTemplate.from_template(
             f'''
     You are an experienced Japanese examiner, well-versed in the N4 and N5 levels of the Japanese Language Proficiency Test (JLPT). Your task is to create 10 multiple-choice questions based on the following grammar knowledge point: **{knowledge_point}**.
@@ -295,71 +253,6 @@ def vocabulary_points_revise(vocabulary_list, output, filepath):
         print(f'Processing knowledge point: {knowledge_point}...')
 
         # 动态生成 prompt，要求 GPT 依次为每个词汇出题
-        prompt = ChatPromptTemplate.from_template(
-            f'''
-            You are an experienced Japanese examiner, well-versed in the N4 and N5 levels of the Japanese Language Proficiency Test (JLPT). Your task is to create 10 multiple-choice questions based on the following vocabulary knowledge point: **{knowledge_point}**.
-
-            ### Requirements:
-            1. Each question should have **4 options**, with only **one correct answer**.
-            2. Ensure all options are grammatically correct, unambiguous, and relevant to the question.
-            3. Incorporate the knowledge point into the question clearly.
-            4. Use **at least three** different question formats from the five listed below. Ensure variety across the 10 questions.
-            5. Use square brackets [ ] to indicate blanks or missing parts in the question (e.g., replace underlines with [ ]).
-            6. Prepend the knowledge point you used to generate the question to the front of all questions.
-            7. Attach all your answers at the end of the 10 questions.
-
-            ### Question Formats:
-            1. **How to write in hiragana:**
-                Q1: ＿＿＿の　ことばは　ひらがなで　どう　かきますか。  
-                **Example:**  
-                あそこに　かわいい　[鳥]が　います。  
-                1. いぬ  2. とり  3. ねこ  4. むし  
-
-            2. **Kanji recognition:**  
-                Q2: ＿＿＿の　ことばは　どう　かきますか。  
-                **Example:**  
-                [おっと]は　今、出かけています。  
-                1. 大  2. 犬  3. 太  4. 夫  
-
-            3. **Filling in the blanks:**  
-                Q3: (   　  ) に　なにを　いれますか。  
-                **Example:**  
-                これから　ひこうきに　（  　　　　　 ）。  
-                1. おります  2. のります  3. あがります  4. のぼります  
-
-            4. **Sentence meaning comparison:**  
-                Q4: ＿＿＿の　ぶんと　だいたい　おなじ　いみの　ぶんが　あります。  
-                **Example:**  
-                ギターは　ちちに　ならいました。  
-                1. ギターは　ちちに　もらいました。  
-                2. ギターは　ちちに　えらんでもらいました。  
-                3. ギターは　ちちに　おしえてもらいました。  
-                4. ギターは　ちちに　かってもらいました。  
-
-            5. **Usage of vocabulary:**  
-                Q5: つぎの　ことばの　つかいかたで　いちばん　いい　ものを　1・2・3・4から　ひとつ　えらんで　ください。  
-                **Example:**  
-                わる  
-                1. おさらを　[わって]　母に　おこられました。  
-                2. おさらを　[わって]　へやに　かざりました。  
-                3. おさらを　[わって]　りょうりを　つくりました。  
-                4. おさらを　[わって]　コーヒーを　のみました。  
-
-            **Answer:** 
-            Q1. 2. とり  
-            Q2. 4. 夫 
-            Q3. 2. のります 
-            Q4. 3. ギターは　ちちに　おしえてもらいました。
-            Q5. 1. おさらを　[わって]　母に　おこられました。
-
-            ### Additional Notes:
-            - Each question must clearly state the corresponding vocabulary knowledge point at the end.  
-            - Avoid using cultural or subjective biases that could confuse learners.  
-            - Ensure the difficulty level aligns with N4/N5 standards.  
-            - The generated questions must maintain high linguistic and contextual accuracy.
-            '''
-        )
-
         prompt_vocabulary = ChatPromptTemplate.from_template(
     f'''
     You are an experienced Japanese examiner, well-versed in the N4 and N5 levels of the Japanese Language Proficiency Test (JLPT). Your task is to create 10 multiple-choice questions based on the following vocabulary knowledge point: **{knowledge_point}**.
@@ -610,25 +503,25 @@ def has_multiple_correct_answers(text):
 
         return bool_dict[result]
 
-def has_duplicate_questions(text):
-    """
-    Check if any questions are duplicated.
+# def has_duplicate_questions(text):
+#     """
+#     Check if any questions are duplicated.
     
-    :param text: The text to check.
-    :return: True if duplicate questions are detected.
-    """
-    questions = re.findall(
-        r'\d+\.\s*(.*?)\n(?:1\.\s*.*?\n){4}',  # Regex to capture the question text only
-        text, re.DOTALL
-    )
-    seen_questions = set()
-    for question in questions:
-        question_text = question.strip()  # Normalize the question text
-        if question_text in seen_questions:
-            print(f"Duplicate question detected: {question_text}")
-            return True  # Duplicate found
-        seen_questions.add(question_text)
-    return False
+#     :param text: The text to check.
+#     :return: True if duplicate questions are detected.
+#     """
+#     questions = re.findall(
+#         r'\d+\.\s*(.*?)\n(?:1\.\s*.*?\n){4}',  # Regex to capture the question text only
+#         text, re.DOTALL
+#     )
+#     seen_questions = set()
+#     for question in questions:
+#         question_text = question.strip()  # Normalize the question text
+#         if question_text in seen_questions:
+#             print(f"Duplicate question detected: {question_text}")
+#             return True  # Duplicate found
+#         seen_questions.add(question_text)
+#     return False
 
 
 def has_stem_errors(text):
@@ -680,6 +573,58 @@ def has_duplicate_options(text):
                 print(f"Duplicate options detected in question {question}: {opt1.strip()}, {opt2.strip()}, {opt3.strip()}, {opt4.strip()}")
                 return True
         return False
+
+
+
+
+def normalize_text(text):
+    """
+    Normalize text by:
+    1. Converting to lowercase.
+    2. Removing non-essential characters such as punctuation and extra spaces.
+    
+    :param text: The text to normalize.
+    :return: Normalized text.
+    """
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Remove punctuation and extra spaces
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    text = re.sub(r'\s+', ' ', text).strip()  # Remove extra spaces
+    
+    return text
+
+def has_duplicate_questions(text):
+    """
+    Check if any questions are duplicated, considering both the question text and options,
+    while ignoring case and non-key characters like spaces and punctuation.
+    
+    :param text: The text to check.
+    :return: True if duplicate questions are detected.
+    """
+    questions = re.findall(
+        r'(\d+)\.\s*(.*?)\n(1\.\s*(.*?)\n)(2\.\s*(.*?)\n)(3\.\s*(.*?)\n)(4\.\s*(.*?)\n)',  # Capture question text and options
+        text, re.DOTALL
+    )
+    
+    seen_questions = set()
+    
+    for question, _, opt1, _, opt2, _, opt3, _, opt4, _ in questions:
+        # Normalize question text and options
+        question_text = normalize_text(question.strip())
+        options = {normalize_text(opt1.strip()), normalize_text(opt2.strip()), 
+                   normalize_text(opt3.strip()), normalize_text(opt4.strip())}
+        
+        # Create a normalized string for comparison: question + sorted options
+        normalized_question = f"{question_text} - {', '.join(sorted(options))}"
+        
+        if normalized_question in seen_questions:
+            print(f"Duplicate question detected: {question_text} with options {options}")
+            return True  # Duplicate found
+        seen_questions.add(normalized_question)
+    
+    return False
 
 
 '''
@@ -962,44 +907,50 @@ output_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\
 output_vocabulary = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\N4 vocabulary"
 revised_output_vocabualry = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\revised_vocabulary"
 revised_output_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\revised_grammar"
-#grammar_points = extract_grammar_points(docx_file_grammar)
-#grammar_points_revise(grammar_points, output_grammar, docx_file_grammar)
+# #grammar_points = extract_grammar_points(docx_file_grammar)
+# #grammar_points_revise(grammar_points, output_grammar, docx_file_grammar)
 
-#rows = extract_numbered_content(test_knowledge_points, 1, 8)
-vocabulary = extract_numbered_content(test_vocabulary, 1, 6)
-grammar = extract_numbered_content(test_grammar, 1, 4)
+# #rows = extract_numbered_content(test_knowledge_points, 1, 8)
+# vocabulary = extract_numbered_content(test_vocabulary, 1, 6)
+# grammar = extract_numbered_content(test_grammar, 1, 4)
 
-print(vocabulary)
-print(grammar)
+# print(vocabulary)
+# print(grammar)
 
-vocabulary_points_revise(vocabulary, revised_output_vocabualry, test_vocabulary)
-grammar_points_revise(grammar, revised_output_grammar, test_grammar)
+# vocabulary_points_revise(vocabulary, revised_output_vocabualry, test_vocabulary)
+# grammar_points_revise(grammar, revised_output_grammar, test_grammar)
 
-# Iterate over all the new question files and fix them
-for filepath in glob.glob(os.path.join(revised_output_vocabualry, "*.docx")):
+# # Iterate over all the new question files and fix them
+# for filepath in glob.glob(os.path.join(revised_output_vocabualry, "*.docx")):
 
-    filename = os.path.splitext(os.path.basename(filepath))[0]
+#     filename = os.path.splitext(os.path.basename(filepath))[0]
             
-    start_time = time.time()
+#     start_time = time.time()
 
-    new_que = read_docx_to_string_with_format(filepath)
-    #question_revise(new_que, filename, revised_output)
-    question_revise_simple(new_que, filename, revised_output_vocabualry)
+#     new_que = read_docx_to_string_with_format(filepath)
+#     #question_revise(new_que, filename, revised_output)
+#     question_revise_simple(new_que, filename, revised_output_vocabualry)
 
-    end_time = time.time()
-    print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
+#     end_time = time.time()
+#     print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
 
 
-# Iterate over all the new question files and fix them
-for filepath in glob.glob(os.path.join(revised_output_grammar, "*.docx")):
+# # Iterate over all the new question files and fix them
+# for filepath in glob.glob(os.path.join(revised_output_grammar, "*.docx")):
 
-    filename = os.path.splitext(os.path.basename(filepath))[0]
+#     filename = os.path.splitext(os.path.basename(filepath))[0]
             
-    start_time = time.time()
+#     start_time = time.time()
 
-    new_que = read_docx_to_string_with_format(filepath)
-    #question_revise(new_que, filename, revised_output)
-    question_revise_simple(new_que, filename, revised_output_grammar)
+#     new_que = read_docx_to_string_with_format(filepath)
+#     #question_revise(new_que, filename, revised_output)
+#     question_revise_simple(new_que, filename, revised_output_grammar)
 
-    end_time = time.time()
-    print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
+#     end_time = time.time()
+#     print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
+
+
+test_duplicate_stem = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\AI Questions\\test_vocabulary_new1_revised.docx"
+filename = os.path.splitext(os.path.basename(test_duplicate_stem))[0]
+new_que = read_docx_to_string_with_format(test_duplicate_stem)
+question_revise_simple(new_que, filename, revised_output_vocabualry)
