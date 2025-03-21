@@ -1,0 +1,842 @@
+'''Question_Generator'''
+import re
+import os
+import glob
+import time
+import string
+import warnings
+import docx
+import mysql.connector
+from docx import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate  
+from langchain.chains import LLMChain   
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader
+from typing import Any
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
+from openpyxl.worksheet.datavalidation import DataValidation
+
+from jap_paper_revise import produce_new_question_list
+from jap_paper_revise import read_docx_to_string_with_format
+
+from jap_vocabulary_processor import vocabulary_points_revise
+from jap_excel_processor import parse_questions
+from jap_excel_processor import store_questions_to_excel
+from jap_excel_processor import process_word_to_excel
+
+def split_into_sentences(text):
+    sentence_endings = re.compile(r'(?<=[。！？])\s*')
+    sentences = sentence_endings.split(text)
+    return sentences
+
+
+def extract_numbered_content(file_path, start_number, end_number):
+    """
+    Extracts numbered content (e.g., 1-8) from a Word document, including multiple-choice options and lists with different formats.
+
+    Args:
+        file_path (str): The path to the Word document.
+        start_number (int): The starting number of the range to extract.
+        end_number (int): The ending number of the range to extract.
+
+    Returns:
+        tuple: A tuple containing two lists:
+            - num: A list of question numbers (e.g., [1, 2])
+            - content_list: A list of lists of options (e.g., [['a. くださる', 'b. いただく'], ['a. 経験', 'b. あつい']])
+    """
+    # Load the Word document
+    doc = Document(file_path)
+    
+    # Compile a regex pattern to match the numbered entries with or without additional details like kanji readings in brackets
+    pattern = re.compile(rf"^\s*(\d+)\.\s*([^【]*)(?:【([^】]*)】)?\s*(.*)")
+    
+    # Lists to store the extracted content
+    num = []
+    content_list = []
+
+    # Define a function to sanitize strings for file names
+    def sanitize_filename(content):
+        # Remove invalid characters for filenames (e.g., \ / : * ? " < > |)
+        return re.sub(r'[\\/*?:"<>|]', '_', content).strip()
+
+    # Iterate through all paragraphs in the document
+    for para in doc.paragraphs:
+        match = pattern.match(para.text)
+        if match:
+            number = int(match.group(1))
+            item = match.group(2).strip()
+            kanji_reading = match.group(3) if match.group(3) else ""
+            additional_text = match.group(4).strip()
+
+            # Prepare the full item content (item + kanji reading if exists)
+            full_item = item + ("【" + kanji_reading + "】" if kanji_reading else "")
+            full_item = full_item.strip()
+
+            # Sanitize the full item to make it safe for filenames
+            sanitized_full_item = sanitize_filename(full_item)
+
+            # Check if the number is within the specified range
+            if start_number <= number <= end_number:
+                # If the number is already in the list, add to the content list
+                if number not in num:
+                    num.append(number)
+                    content_list.append([f"{sanitized_full_item} {additional_text}"])
+                else:
+                    index = num.index(number)
+                    content_list[index].append(f"{sanitized_full_item} {additional_text}")
+
+    return num, content_list
+
+
+"""
+def extract_grammar_points(docx_file):
+    # 读取docx文件
+    doc = docx.Document(docx_file)
+    
+    knowledge_points = []
+    
+    # 遍历文档的所有段落
+    for para in doc.paragraphs:
+        print(f"读取的段落内容: {para.text}")
+        # 使用正则表达式匹配类似 "1.～あいだ（間）" 的格式
+        match = re.match(r'(\d+)\.([^\n]+)', para.text.strip())
+        if match:
+            # 提取编号和短语部分
+            number = match.group(1)
+            phrase = match.group(2).strip()
+            knowledge_points.append({
+                'number': number,
+                'phrase': phrase
+            })
+    
+    return knowledge_points
+
+
+def extract_vocabulary(docx_path):
+    doc = Document(docx_path)
+    vocabulary_list = []
+    number_pattern = r'^\d+\. '  # 匹配以数字和点号开头的行
+    
+    # 遍历每个段落
+    for para in doc.paragraphs:
+        # 将每个段落按行分割
+        for line in para.text.splitlines():
+            # 如果行包含带序号的内容
+            if re.match(number_pattern, line.strip()):
+                vocabulary_list.append(line.strip())
+    
+    return vocabulary_list
+"""
+
+
+
+
+
+
+"""
+Main Processor for Grammar
+"""
+
+
+# def grammar_points_revise(num, grammar_list, output, filepath):
+#     filename = os.path.splitext(os.path.basename(filepath))[0]
+#     llm = ChatOpenAI(
+#         temperature=0.6,
+#         model='gpt-4o'
+#     )
+
+#     # Define a function to handle the generation of questions for each format
+#     def generate_grammar_questions(knowledge_point, question_format, num_questions):
+#         # Descriptions for each question format
+#         format_descriptions = {
+#             1: '''**Grammar Pattern Identification:**  
+#                 Test the ability to identify a specific grammar pattern within a sentence. Present sentences with various grammar elements and ask students to pick out the one that follows a particular grammar pattern.
+#                 Example:  
+#                 もんだい1 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+#                 かれが　手伝って　（  　　　　　 ）　宿題 (しゅくだい) が　終わらなっかった。  
+#                 1. もらったから		2. くれなかったから		3. ほしいから		4. ほしかったから  
+#                 Answer: 2''',
+
+#             2: '''**Fill in the Blanks (Grammar Completion):**  
+#                 Test the correct usage of verbs, nouns, or grammar by filling in blanks. Introduce different sentence structures or subtle grammatical conditions.
+#                 Example:  
+#                 もんだい2 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+#                 宿題 (しゅくだい) を　したのに、　先生が　（  　　　　　 ）。  
+#                 1. 来なかった		2. してしまった		3. 会わなかった		4. するつもりだった  
+#                 Answer: 1''',
+
+#             3: '''**Sentence Meaning Comparison:**  
+#                 Test the ability to recognize sentences with similar meanings, but using different vocabulary or grammatical structures.
+#                 Example:  
+#                 もんだい3 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+#                 その　指輪 (ゆびわ) は星 (ほし) の　（  　　　　　 ）　ひかっていた。  
+#                 1. みたい		2. らしく		3. ほどに		4. ように  
+#                 Answer: 4''',
+
+#             4: '''**Grammar and Vocabulary Combination:**  
+#                 Test the ability to use a specific grammar point along with appropriate vocabulary.
+#                 Example:  
+#                 もんだい4 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+#                 もし　1000万円　もらったら、　わたしは　いろいろな　国を　（  　　　　　 ）。  
+#                 1. 旅行したがる			2. 旅行したがっている		3. 旅行したい			4. 旅行したかった  
+#                 Answer: 3''',
+
+#             5: '''**Negative Form Construction:**  
+#                 Given a positive sentence, ask students to create the negative form using the correct grammar rules.
+#                 Example:  
+#                 もんだい5 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+#                 3時間だけ　仕事を　したら　10,000円　（  　　　　　 ）　もらえた。  
+#                 1. し   2. に   3. も   4. で  
+#                 Answer: 3'''
+#         }
+
+#         # Ensure that we have a description for the given format
+#         format_description = format_descriptions.get(question_format, "")
+
+#         # 细化干扰项设计规则
+#         interference_rules = {
+#             1: f"干扰项应包含与正确语法模式相似但错误的变体，例如对于 {knowledge_point}，若正确形式是 A 型，干扰项可设计为类似的 B 型、C 型等错误形式。",
+#             2: f"干扰项应是常见的语法错误用法，对于 {knowledge_point} 涉及的动词、名词或语法结构，干扰项可设计为错误的变形或搭配。",
+#             3: f"干扰项的句子意思应与正确选项有一定关联但存在明显差异，对于 {knowledge_point} 相关的语义表达，干扰项可使用不同的词汇或结构来造成混淆。",
+#             4: f"干扰项应使用与正确语法点相近但不适用的词汇，对于 {knowledge_point} 搭配的词汇，干扰项可选择类似但语义或语法上不匹配的词汇。",
+#             5: f"干扰项应是不符合否定形式规则的构造，对于 {knowledge_point} 的肯定句变否定，干扰项可设计为错误的否定形式或未遵循正确规则的变化。"
+#         }
+        
+
+#         # 控制难度梯度
+#         difficulty_levels = {
+#             1: "基础难度：句子结构简单，语境清晰，语法点应用直接。",
+#             2: "中级难度：句子结构稍复杂，可能包含多个语法元素，需要一定的分析能力。",
+#             3: "高级难度：句子结构复杂，语境有一定的隐含信息，需要深入理解语法点和上下文。"
+#         }
+        
+
+#         # 质量验证提示
+#         validation_prompt = """
+#         生成的题目需经过以下质量验证：
+#         1. 语法准确性：题目和选项的语法必须正确，符合日语 N4/N5 水平的规范。
+#         2. 干扰项有效性：干扰项应具有迷惑性，但又能通过正确的语法知识排除。
+#         3. 难度合理性：根据不同难度级别设计题目，确保难度分布合理。
+#         4. 语境自然度：句子的语境应符合日常交流或考试中的实际情况。
+#         """
+        
+
+#         # The revised prompt now includes the explanation for each question format, interference rules, difficulty levels and validation prompt
+#         prompt_grammar = ChatPromptTemplate.from_template(
+#             f'''
+#             You are an experienced Japanese examiner, well-versed in the N4 and N5 levels of the Japanese Language Proficiency Test (JLPT). Your task is to create exactly {num_questions} multiple-choice questions based on the following grammar knowledge point: **{knowledge_point}**.
+
+#             ### Requirements:
+#             1. Each question should have **4 options**, with only **one correct answer**, the answers should **vary randomly from 1 to 4**.
+#             2. The correct answer must strictly align with the logic of the question stem.
+#             3. The options should be meaningful, with the incorrect ones being close to the correct answer, yet still clearly wrong in context.
+#             4. Ensure that the question is unambiguous by adding necessary contextual constraints (e.g., verb tense, sentence structure, or meaning) to eliminate multiple correct answers.
+#             5. Ensure that the correct option fits naturally in the sentence context and reflects the meaning of the grammar point.
+#             6. After generating the question, apply a check to ensure that the correct answer is unique, and the other options are incorrect and clearly unsuitable.
+#             7. Avoid misleading phrasing or unnatural sentence constructions that may confuse test-takers. The question should resemble real exam-level language usage.
+#             8. Each question must have an `Answer: x` at the end.
+
+#             ### Diversified test question setting methods: 
+#             The following **Question Format** is {question_format}. Here's what this format means:
+#             {format_description}
+
+#             ### Interference Rules:
+#             {interference_rules[question_format]}
+
+#             ### Difficulty Levels:
+#             请按照以下难度级别生成题目，每个难度级别生成 {num_questions // 3} 道题：
+#             {difficulty_levels[1]}
+#             {difficulty_levels[2]}
+#             {difficulty_levels[3]}
+
+#             ### Additional Notes:
+#             - The generated questions must maintain high linguistic and contextual accuracy.
+#             - Avoid using cultural or subjective biases that could confuse learners.
+#             - Ensure that each question format has diversity in context, grammatical structure, and vocabulary usage.
+
+#             ### Validation Prompt:
+#             {validation_prompt}
+
+#             ### Before finalizing, check your output against these rules:
+#             1. Each question must start with `もんだい{question_format}` for format indication.
+#             2. Each question must have exactly 4 options (`1` to `4`).
+#             3. Each question must have an `Answer: x` at the end.
+#             4. Do not include any additional instruction in the output except the questions and their content.
+#             '''
+#         )
+
+#         # Create chain to run the model
+#         chain_one = LLMChain(llm=llm, prompt=prompt_grammar)
+
+#         # Input data for generation
+#         input_data = {
+#             'knowledge_point': knowledge_point,
+#         }
+
+#         # Generate the questions
+#         return chain_one.run(input_data)
+
+#     def split_sentences(text, question_counter):
+#         # 使用 'もんだい' 切分文本，确保每个问题独立
+#         problems = re.split(r'(もんだい\d+)', text)
+
+#         # 去除切分后为空的元素
+#         problems = [p.strip() for p in problems if p.strip()]
+
+#         # 为每个问题加上 Qx 序号
+#         result = []
+#         for i in range(len(problems)):
+#             if problems[i].startswith('もんだい'):
+#                 result.append(f"Q{question_counter}: " + problems[i])
+#                 question_counter += 1  # 增加问题计数器
+#             else:
+#                 result.append(problems[i])
+
+#         return result, question_counter
+
+#     def process_and_revise_document(output_path):
+#         # 读取已保存的文档
+#         doc = Document(output_path)
+
+#         question_counter = 1  # 从1开始计数
+
+#         # 遍历文档中的每个段落
+#         for paragraph in doc.paragraphs:
+#             # 使用 split_into_sentences 来处理每个段落
+#             sentences, question_counter = split_sentences(paragraph.text, question_counter)
+
+#             # 清空原段落文本
+#             paragraph.clear()
+
+#             # 添加每个切分后的句子到段落中，并在 Answer 后添加换行
+#             for sentence in sentences:
+#                 # 如果句子包含 Answer: x，在后面加一个换行
+#                 if "Answer:" in sentence:
+#                     paragraph.add_run(sentence)
+#                     paragraph.add_run("\n")  # 添加换行
+#                 else:
+#                     paragraph.add_run(sentence)
+
+#         # 保存修改后的文档，覆盖原文件
+#         doc.save(output_path)
+
+#     # Iterate over each knowledge point and process each one separately
+#     for knowledge_point, question_number in zip(grammar_list, num):
+#         print(f'Processing vocabulary {knowledge_point} with number {question_number}...')
+
+#         # Create a new document for this knowledge point
+#         output_doc = Document()
+
+#         # Generate 20 questions for each format (1 to 5)
+#         for question_format in range(1, 6):  # Iterate over formats 1 to 5
+#             print(f"Generating questions for format {question_format}...")
+
+#             # Generate the questions for this format
+#             revise_result = generate_grammar_questions(knowledge_point, question_format, 20)
+
+#             # Process the generated questions and add them to the output document
+#             sentences, _ = split_sentences(revise_result, 1)
+
+#             # Add format heading to the document for each format
+#             output_doc.add_paragraph(f"### Format {question_format}")
+
+#             # Add sentences (questions) to the document
+#             for sentence in sentences:
+#                 sentence = sentence.replace("**Answers:**", "**Answers**")
+#                 # sentence = sentence.replace("＿＿＿", "[ ]")  # 替换空格部分
+#                 output_doc.add_paragraph(sentence)
+
+#         # Save the generated questions for this knowledge point into a Word document
+#         output_path = os.path.join(output, f"{filename}_{question_number}_{knowledge_point}.docx")
+#         output_doc.save(output_path)
+
+#         # Process and revise the document after saving
+#         process_and_revise_document(output_path)
+
+
+
+def generate_prompt(knowledge_point: str, question_format: int, num_questions: int) -> str:
+    """Generate the prompt for the LLM based on parameters."""
+    format_descriptions = {
+            1: '''[Grammar Pattern Identification:]
+                Test the ability to identify a specific grammar pattern within a sentence. Present sentences with various grammar elements and ask students to pick out the one that follows a particular grammar pattern.
+                Example:  
+                もんだい1 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+                かれが　手伝って　（  　　　　　 ）　宿題 (しゅくだい) が　終わらなっかった。  
+                1. もらったから		2. くれなかったから		3. ほしいから		4. ほしかったから  
+                Answer: 2''',
+
+            2: '''[Fill in the Blanks (Grammar Completion):]  
+                Test the correct usage of verbs, nouns, or grammar by filling in blanks. Introduce different sentence structures or subtle grammatical conditions.
+                Example:  
+                もんだい2 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+                宿題 (しゅくだい) を　したのに、　先生が　（  　　　　　 ）。  
+                1. 来なかった		2. してしまった		3. 会わなかった		4. するつもりだった  
+                Answer: 1''',
+
+            3: '''[Sentence Meaning Comparison:] 
+                Test the ability to recognize sentences with similar meanings, but using different vocabulary or grammatical structures.
+                Example:  
+                もんだい3 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+                その　指輪 (ゆびわ) は星 (ほし) の　（  　　　　　 ）　ひかっていた。  
+                1. みたい		2. らしく		3. ほどに		4. ように  
+                Answer: 4''',
+
+            4: '''[Grammar and Vocabulary Combination:] 
+                Test the ability to use a specific grammar point along with appropriate vocabulary.
+                Example:  
+                もんだい4 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+                もし　1000万円　もらったら、　わたしは　いろいろな　国を　（  　　　　　 ）。  
+                1. 旅行したがる			2. 旅行したがっている		3. 旅行したい			4. 旅行したかった  
+                Answer: 3''',
+
+            5: '''[Negative Form Construction:] 
+                Test the ability to construct negative sentences using various grammatical elements (e.g., verb negation, particles, auxiliary verbs). This includes:
+                - Basic Mode: Direct negation (e.g., 行かない, できない).
+                - Advanced Mode: Implicit negation through context or particles (e.g., も, しか).
+                Example:  
+                もんだい5 （  　　　　　 ）に　何を　入れますか。　1・2・3・4から　いちばん　いい　ものを　一つ　えらんで　ください。
+                3時間だけ　仕事を　したら　10,000円　（  　　　　　 ）　もらえた。  
+                1. し   2. に   3. も   4. で  
+                Answer: 3'''
+        }
+    
+    interference_rules = {
+            1: f"The interference items should contain variants that are similar to the correct grammatical pattern but incorrect. For example, for {knowledge_point}, if the correct form is type A, the interference items can be designed as similar incorrect forms such as type B or type C.",
+            2: f"The interference items should be common grammatical errors. For the verbs, nouns or grammatical structures involved in {knowledge_point}, the interference items can be designed as incorrect variations or collocations.",
+            3: f"The sentence meaning of the interference items should be related to the correct option but there are obvious differences. For the semantic expressions related to {knowledge_point}, the interference items can use different vocabulary or structures to cause confusion.",
+            4: f"The interference items should use vocabulary that is close to the correct grammatical point but not applicable. For the vocabulary that matches {knowledge_point}, the interference items can choose similar but semantically or grammatically mismatched vocabulary.",
+            5: f"The interference items should include: \n"
+               f"1. Basic Mode: Incorrect verb negation forms (e.g., 行かない → 行きない).\n"
+               f"2. Advanced Mode: Particles or verbs that do not imply negation (e.g., も → が).\n"
+               f"For {knowledge_point}, ensure distractors are contextually plausible but grammatically incorrect for negation."
+            }
+    difficulty_levels = {
+            1: "Basic difficulty: simple sentence structure, clear context, and direct application of grammar points.",
+            2: "Intermediate difficulty: slightly complex sentence structure, may contain multiple grammatical elements, and requires certain analytical skills.",
+            3: "Advanced difficulty: complex sentence structure, the context has certain implicit information, and requires a deep understanding of grammar points and context."
+        }
+
+    validation_prompt = """
+    Generated questions must undergo the following quality validations:
+    1. Grammatical accuracy: The grammar of the questions and options must be correct and meet the standards of Japanese N4/N5 level.
+    2. Distractor validity: Distractors should be confusing, but can be eliminated with correct grammatical knowledge.
+    3. Reasonable difficulty: Design questions according to different difficulty levels to ensure a reasonable distribution of difficulty.
+    4. Contextual naturalness: The context of the sentence should be consistent with the actual situation in daily communication or exams.
+    """
+    
+    prompt = (
+        f"You are an experienced Japanese examiner for JLPT N4/N5. Create exactly {num_questions} questions "
+        f"for the grammar point: **{knowledge_point}**.\n\n"
+        f"Question Format {question_format}: {format_descriptions.get(question_format, '')}\n\n"
+        f"Interference Rules: {interference_rules.get(question_format, '')}\n\n"
+        f"Generate questions with the following difficulty breakdown (each: {num_questions // 3} questions):\n"
+        f"{difficulty_levels[1]}\n{difficulty_levels[2]}\n{difficulty_levels[3]}\n\n"
+        f"{validation_prompt}\n\n"
+        f"Instructions:\n"
+        f"1. Each question must start with a single question header in the format: 'Qx: もんだい{question_format}'.\n"
+        f"2. Each question must have exactly 4 options (numbered 1 to 4) on one line.\n"
+        f"3. Each question must end with a line 'Answer: x', where x is the correct option number.\n"
+        f"4. Do not include any extra headings, difficulty levels, sub-numbering, or any additional text.\n\n"
+        f"Output exactly in the following format (no extra text or markdown):\n"
+        f"Qx: もんだい{question_format}\n"
+        f"[question text]\n"
+        f"[options (one single line with four options)]\n"
+        f"Answer: x\n"
+    )
+    return prompt
+
+
+def generate_grammar_questions(knowledge_point: str, question_format: int, num_questions: int) -> str:
+    """Generate grammar questions using the LLM."""
+    prompt = generate_prompt(knowledge_point, question_format, num_questions)
+    llm = ChatOpenAI(temperature=0.6, model='gpt-4o')
+    chain = LLMChain(llm=llm, prompt=ChatPromptTemplate.from_template(prompt))
+    try:
+        # Here, if you use parameterized templates, pass input_data; otherwise, the prompt is fully rendered.
+        return chain.run({'knowledge_point': knowledge_point})
+    except Exception as e:
+        # Log error or handle it appropriately
+        print(f"Error generating questions: {e}")
+        return ""
+
+
+def split_sentences(text, question_counter):
+    # Remove any pre-existing question numbering (e.g., "Q1:", "Q2:" etc.)
+    text = re.sub(r'Q\d+:\s*', '', text)
+    
+    # Use 'もんだい' as the delimiter to split the text
+    problems = re.split(r'(もんだい\d+)', text)
+    problems = [p.strip() for p in problems if p.strip()]
+
+    result = []
+    for part in problems:
+        if part.startswith('もんだい'):
+            result.append(f"Q{question_counter}: " + part)
+            question_counter += 1
+        else:
+            result.append(part)
+    return result, question_counter
+
+
+def process_and_revise_document(doc_path: str):
+    """Process the saved document to format questions properly."""
+    doc = Document(doc_path)
+    question_counter = 1
+    for paragraph in doc.paragraphs:
+        sentences, question_counter = split_sentences(paragraph.text, question_counter)
+        # Clearing and re-adding text may require a custom method; ensure compatibility with python-docx.
+        p = paragraph._element
+        for child in list(p):
+            p.remove(child)
+        for sentence in sentences:
+            run = paragraph.add_run(sentence)
+            if "Answer:" in sentence:
+                paragraph.add_run("\n")
+    doc.save(doc_path)
+
+def grammar_points_revise(num_list, grammar_list, output_dir, filepath):
+    """Generate and revise grammar questions for each knowledge point."""
+    filename = os.path.splitext(os.path.basename(filepath))[0]
+    
+    for knowledge_point, question_number in zip(grammar_list, num_list):
+        print(f'Processing {knowledge_point} with number {question_number}...')
+        output_doc = Document()
+        for question_format in range(1, 6):
+            print(f"Generating questions for format {question_format}...")
+            questions_text = generate_grammar_questions(knowledge_point, question_format, 6)
+            sentences, _ = split_sentences(questions_text, 1)
+            output_doc.add_paragraph(f"### Format {question_format}")
+            for sentence in sentences:
+                sentence = sentence.replace("**Answers:**", "**Answers**")
+                output_doc.add_paragraph(sentence)
+        output_path = os.path.join(output_dir, f"{filename}_{question_number}_{knowledge_point}.docx")
+        output_doc.save(output_path)
+        process_and_revise_document(output_path)
+
+
+
+
+
+
+
+"""Self Checker"""
+
+
+def question_revise_simple(rows, filename, revised_newpaper_folder, max_iterations=5):
+    llm = ChatOpenAI(
+        temperature=0.6,
+        model='gpt-4o'
+    )
+    
+    prompt_revise = ChatPromptTemplate.from_template(
+    f'''
+    Here are the new generated Japanese practice questions: {rows}
+    You are an experienced Japanese N4/N5 examiner tasked with reviewing and ensuring that all multiple-choice test questions meet the following criteria:
+
+    1. **No duplicate questions**: Ensure that all questions are unique. If a question is repeated or too similar to another, please revise it to create a new question with a distinct structure or context. Provide specific suggestions on how to modify repeated questions.
+
+    2. **No duplicate options**: All options within a question should be unique, contextually meaningful, and grammatically correct. Avoid options that are too similar to each other. If necessary, suggest how to modify similar options to increase their clarity.
+
+    3. **No duplicate correct answers**: Ensure that only one answer is correct. If two options could be correct, modify the question or options to clarify the correct choice. Provide specific suggestions on how to make the answer clear and unambiguous.
+
+    4. **Grammatical correctness**: The title and stem of each question must be grammatically correct. Review for unnatural sentence structures and revise them to ensure fluency and correctness. If you detect any grammatical errors, please explain how to fix them.
+
+    5. **Relevance of options**: Ensure that the stem clearly indicates what cannot be chosen. One option should be inappropriate or clearly wrong in context, while all other options are suitable. Avoid culturally biased content. Suggest how to improve the incorrect options by reflecting common mistakes learners make.
+
+    6. **Pronunciation and Word Usage**: If the question involves pronunciation, katakana, or hiragana forms, the Japanese word should be enclosed in brackets for clarity. For hiragana or katakana conversion questions, ensure that the word is written in the correct form, and the correct answer is not shown in the question stem. Also, check for spelling inconsistencies.
+
+    7. **General guidance**: Eliminate any ambiguity, revise unclear options, and avoid subjective or culturally biased phrasing. Ensure all questions are at an appropriate difficulty level for the target JLPT level (N4/N5). Avoid complex words or structures outside the typical N4/N5 range.
+
+    8. **Output Format**: Each question must keep the original format:
+    - Each question must start with `Qx` (e.g., `Q1`, `Q2`...).
+    - Each question must have exactly 4 options (`1` to `4`).
+    - Each question must have an `Answer: x` at the end of it.
+    - Do not include any other comments such as '**'. Please ensure all formatting is consistent.
+   '''
+    )
+
+    
+    chain = LLMChain(llm=llm, prompt=prompt_revise)
+    input_data = {'new_paper': rows}
+    
+    for iteration in range(max_iterations):
+        revised_result = chain.run(input_data)
+        errors = check_for_error(revised_result)
+
+        if not errors:
+            print(f"No issues found after {iteration + 1} iterations.")
+            break
+
+        # Ensure errors is iterable
+        print(f"Iteration {iteration + 1}: Detected errors - {', '.join(errors)}")
+        input_data['new_paper'] = revised_result
+
+        
+        # 保存中间修订结果
+        intermediate_path = os.path.join(revised_newpaper_folder, f"{filename}_iteration_{iteration + 1}.docx")
+        output_doc = Document()
+        sentences = split_into_sentences(revised_result)
+        for sentence in sentences:
+            output_doc.add_paragraph(sentence)
+        output_doc.save(intermediate_path)
+        
+        # 保存错误日志
+        log_path = os.path.join(revised_newpaper_folder, f"{filename}_error_log.txt")
+        with open(log_path, 'a', encoding='utf-8') as log_file:
+            log_file.write(f"Iteration {iteration + 1} Errors: {', '.join(errors)}\n")
+    else:
+        print(f"Maximum iterations ({max_iterations}) reached. Errors may still exist.")
+    
+    # 保存最终修订结果
+    output_path = os.path.join(revised_newpaper_folder, f"{filename}_revised.docx")
+    output_doc = Document()
+    sentences = split_into_sentences(revised_result)
+    for sentence in sentences:
+        output_doc.add_paragraph(sentence)
+    output_doc.save(output_path)
+
+    # 存储到excel
+    qa_list = parse_questions(revised_result)
+    excel_filename = f"{filename}.xlsx"
+    store_questions_to_excel(qa_list, revised_newpaper_folder, excel_filename)
+
+
+
+
+
+def check_for_error(revised_text):
+    """
+    Check for errors in the revised question set, including:
+    - Multiple correct answers
+    - Duplicate questions
+    - Errors in the question stem
+    - Duplicate options
+    
+    :param revised_text: The revised text output from GPT.
+    :return: List of errors if any are found, empty list otherwise.
+    """
+    errors = []  # Initialize an empty list to store error messages
+    
+    try:
+        if has_multiple_correct_answers(revised_text):
+            errors.append("Multiple correct answers")
+        
+        if has_duplicate_questions(revised_text):
+            errors.append("Duplicate questions")
+        
+        if has_stem_errors(revised_text):
+            errors.append("Stem errors")
+        
+        if has_duplicate_options(revised_text):
+            errors.append("Duplicate options")
+        
+        return errors  # Return the list of errors (can be empty if no errors)
+    
+    except Exception as e:
+        print(f"Error in check_for_error: {e}")
+        return ["Unexpected error in check_for_error"]  # Return a list with an error message if an exception occurs
+
+
+def has_multiple_correct_answers(text):
+    """
+    Checks if a Japanese multiple-choice question has more than one possible correct answer.
+    
+    :param text: The text containing the multiple-choice questions.
+    :return: True if multiple correct answers exist, False otherwise.
+    """
+    llm = ChatOpenAI(
+        temperature=0.3,  # Lower temperature for more deterministic output
+        model="gpt-4o"
+    )
+    
+    prompt = ChatPromptTemplate.from_template(
+        "You are an experienced Japanese N4/N5 examiner reviewing the following multiple-choice questions:\n\n"
+        "{new_paper}\n\n"
+        "Check if any question has **more than one correct answer**. This means that multiple options are valid for the question given its context.\n"
+        "If at least one question has multiple valid correct answers, respond with 'True'. Otherwise, respond with 'False'.\n"
+        "Your output must be exactly 'True' or 'False', nothing else."
+    )
+
+    chain = LLMChain(llm=llm, prompt=prompt)
+    input_data = {'new_paper': text}
+
+    try:
+        result = chain.run(input_data).strip().lower()
+        return result == "true"
+    except Exception as e:
+        print(f"Error processing has_multiple_correct_answers: {e}")
+        return False  # Default to False if an error occurs
+
+
+def has_stem_errors(text):
+    """
+    Checks if there are grammatical errors or ambiguities in the question stems.
+    
+    :param text: The text containing the multiple-choice questions.
+    :return: True if errors exist, False otherwise.
+    """
+    llm = ChatOpenAI(
+        temperature=0.3,  # Lower temperature to improve reliability
+        model="gpt-4o"
+    )
+    
+    prompt = ChatPromptTemplate.from_template(
+        "You are an experienced Japanese N4/N5 examiner reviewing the following multiple-choice questions:\n\n"
+        "{new_paper}\n\n"
+        "Check if any **question stem** (the main question part before the options) has errors, such as:\n"
+        "- Grammatical mistakes\n"
+        "- Unnatural sentence structures\n"
+        "- Ambiguous wording\n"
+        "If there is at least one issue in the stems, respond with 'True'. Otherwise, respond with 'False'.\n"
+        "Your output must be exactly 'True' or 'False', nothing else."
+    )
+
+    chain = LLMChain(llm=llm, prompt=prompt)
+    input_data = {'new_paper': text}
+
+    try:
+        result = chain.run(input_data).strip().lower()
+        return result == "true"
+    except Exception as e:
+        print(f"Error processing has_stem_errors: {e}")
+        return False  # Default to False if an error occurs
+
+def has_duplicate_options(text):
+        """
+        Check for duplicate options in the questions.
+        
+        :param text: The text to check.
+        :return: True if - options are found within a question.
+        """
+        # Example: Detect duplicate options for a given question.
+        questions_with_options = re.findall(
+            r'(\d+)\.\s*(.*?)\n(1\.\s*(.*?)\n)(2\.\s*(.*?)\n)(3\.\s*(.*?)\n)(4\.\s*(.*?)\n)',
+            text, re.DOTALL
+        )
+
+        for question, _, opt1, _, opt2, _, opt3, _, opt4, _ in questions_with_options:
+            options = {opt1.strip(), opt2.strip(), opt3.strip(), opt4.strip()}
+            if len(options) < 4:  # If any options are duplicates
+                print(f"Duplicate options detected in question {question}: {opt1.strip()}, {opt2.strip()}, {opt3.strip()}, {opt4.strip()}")
+                return True
+        return False
+
+
+
+
+def normalize_text(text):
+    """
+    Normalize text by:
+    1. Converting to lowercase.
+    2. Removing non-essential characters such as punctuation and extra spaces.
+    
+    :param text: The text to normalize.
+    :return: Normalized text.
+    """
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Remove punctuation and extra spaces
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    text = re.sub(r'\s+', ' ', text).strip()  # Remove extra spaces
+    
+    return text
+
+def has_duplicate_questions(text):
+    """
+    Check if any questions are duplicated, considering both the question text and options,
+    while ignoring case and non-key characters like spaces and punctuation.
+    
+    :param text: The text to check.
+    :return: True if duplicate questions are detected.
+    """
+    questions = re.findall(
+        r'(\d+)\.\s*(.*?)\n(1\.\s*(.*?)\n)(2\.\s*(.*?)\n)(3\.\s*(.*?)\n)(4\.\s*(.*?)\n)',  # Capture question text and options
+        text, re.DOTALL
+    )
+    
+    seen_questions = set()
+    
+    for question, _, opt1, _, opt2, _, opt3, _, opt4, _ in questions:
+        # Normalize question text and options
+        question_text = normalize_text(question.strip())
+        options = {normalize_text(opt1.strip()), normalize_text(opt2.strip()), 
+                   normalize_text(opt3.strip()), normalize_text(opt4.strip())}
+        
+        # Create a normalized string for comparison: question + sorted options
+        normalized_question = f"{question_text} - {', '.join(sorted(options))}"
+        
+        if normalized_question in seen_questions:
+            print(f"Duplicate question detected: {question_text} with options {options}")
+            return True  # Duplicate found
+        seen_questions.add(normalized_question)
+    
+    return False
+
+
+
+
+def main():
+    # 文件路径定义
+    docx_file_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\N4N5 material\\N4 Notes 文法_numbered.docx"
+    docx_file_vocabulary = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\N4N5 material\\N4 Notes 語彙_numbered.docx"
+    test_knowledge_points = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\test_knowledge_points.docx"
+    test_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\test_grammar.docx"
+    test_vocabulary = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\test_vocabulary.docx"
+
+    N4_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\N4N5 material\\N4 - Grammar.docx"
+    N4_vocabulary = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\N4N5 material\\N4 - Vocabulary・語彙.docx"
+    N5_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\N4N5 material\\N5 - Grammar.docx"
+    N5_vocabulary = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\N4N5 material\\N5 - Vocabulary・語彙.docx"
+
+    output_grammar_N4 = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\N4 grammar"
+    output_vocabulary_N4 = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\N4 vocabulary"
+    output_grammar_N5 = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\N5 grammar"
+    output_vocabulary_N5 = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\N5 vocabulary"
+
+    revised_output_vocabualry = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\revised_vocabulary"
+    revised_output_grammar = "C:\\Users\\刘宇\\OneDrive - CUHK-Shenzhen\\桌面\\JAP_GPT\\2025_new_db\\new_questions\\revised_grammar"
+
+    # 提取和修订内容
+    vocabulary_N4_num = extract_numbered_content(N4_vocabulary, 689, 807)[0]
+    vocabulary_N4_content = extract_numbered_content(N4_vocabulary, 689, 807)[1]
+    vocabulary_N5_num = extract_numbered_content(N5_vocabulary, 1, 802)[0]
+    vocabulary_N5_content = extract_numbered_content(N5_vocabulary, 1, 802)[1]
+
+    grammar_N4_num = extract_numbered_content(N4_grammar, 1, 92)[0]
+    grammar_N4_content = extract_numbered_content(N4_grammar, 1, 92)[1]
+    grammar_N5_num = extract_numbered_content(N5_grammar, 1, 77)[0]
+    grammar_N5_content = extract_numbered_content(N5_grammar, 1, 77)[1]
+
+    vocabulary_num = extract_numbered_content(test_vocabulary, 1, 6)[0]
+    vocabulary_test = extract_numbered_content(test_vocabulary, 1, 6)[1]
+    grammar_num = extract_numbered_content(test_grammar, 1, 4)[0]
+    grammar_test = extract_numbered_content(test_grammar, 1, 4)[1]
+
+    print(vocabulary_test)
+    print(grammar_test)
+
+    # 修订词汇和语法点
+    '''N4 Vocabulary'''
+    # vocabulary_points_revise(vocabulary_N4_num, vocabulary_N4_content, output_vocabulary_N4, N4_vocabulary)
+    # process_word_to_excel(output_vocabulary_N4, output_vocabulary_N4)
+    '''N5 Vocabulary'''
+    # vocabulary_points_revise(vocabulary_N5_num, vocabulary_N5_content, output_vocabulary_N5, N5_vocabulary)
+    # process_word_to_excel(output_vocabulary_N5, output_vocabulary_N5)
+    grammar_points_revise(grammar_num, grammar_test, revised_output_grammar, test_grammar)
+    process_word_to_excel(revised_output_grammar, revised_output_grammar)
+
+    # # 处理新的问题文件并修订
+    # for filepath in glob.glob(os.path.join(revised_output_grammar, "*.docx")):
+    #     filename = os.path.splitext(os.path.basename(filepath))[0]
+    #     start_time = time.time()
+    #     new_que = read_docx_to_string_with_format(filepath)
+    #     question_revise_simple(new_que, filename, revised_output_grammar)
+    #     end_time = time.time()
+    #     print(f"Completed revising new questions {filename} in: {end_time - start_time:.2f} seconds")
+
+if __name__ == "__main__":
+    main()
