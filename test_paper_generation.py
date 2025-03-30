@@ -8,12 +8,16 @@ from docx.oxml.ns import qn
 from docx.enum.section import WD_SECTION
 from docx.enum.text import WD_LINE_SPACING
 import os
+import tkinter as tk
+from tkinter import scrolledtext
+from tkinter import messagebox
 
-def get_latest_paper_id(test_paper):
-    files = [f for f in os.listdir("D:\\JAP_GPT\\JAP_GPT\\newly_generated_papers") if f.startswith(f"{test_paper}")]
+
+def get_latest_paper_id(test_paper, path):
+    files = [f for f in os.listdir(path) if f.startswith(f"{test_paper}")]
     if not files:
         return None
-    full_paths = [os.path.join("D:\\JAP_GPT\\JAP_GPT\\newly_generated_papers", f) for f in files]
+    full_paths = [os.path.join(path, f) for f in files]
     return max(full_paths, key=os.path.getmtime)
 
 
@@ -27,7 +31,7 @@ def sort_key(item):
         return (1, level, knowledge_point)
 
 
-def Word_Document(test_paper, question_vocabulary_type1, question_vocabulary_type2, question_vocabulary_type3, question_vocabulary_type4, question_vocabulary_type5, question_grammar_type1, save_path):
+def Word_Document(test_paper, question_vocabulary_type1, question_vocabulary_type2, question_vocabulary_type3, question_vocabulary_type4, question_vocabulary_type5, question_grammar_type1, save_path, folder_path):
 
     def title_Paragraph(doc, text, size, color):
         paragraph = doc.add_paragraph()
@@ -264,10 +268,11 @@ def Word_Document(test_paper, question_vocabulary_type1, question_vocabulary_typ
         paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
         paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
 
-    doc.save(f"D:\\JAP_GPT\\JAP_GPT\\newly_generated_papers\\{save_path}.docx")
+    doc.save(f"{folder_path}\\{save_path}.docx")
+    messagebox.showinfo("Success", "The document has been saved successfully!")
 
 
-def questions_preprocess(test_paper, questions, save_path):
+def questions_preprocess(test_paper, questions, save_path, cursor, folder_path):
 
     question_grammar_type1 = []
     question_vocabulary_type1 = []
@@ -305,14 +310,22 @@ def questions_preprocess(test_paper, questions, save_path):
             stem = re.sub(r'^5　つぎの　ことばの　つかいかたで　いちばん　いい　ものを　1・2・3・4から　ひとつ　えらんで　ください。\n', '', question[2])
             question_vocabulary_type5.append(stem)
         
-    Word_Document(test_paper, question_vocabulary_type1, question_vocabulary_type2, question_vocabulary_type3, question_vocabulary_type4, question_vocabulary_type5, question_grammar_type1, save_path)
+    Word_Document(test_paper, question_vocabulary_type1, question_vocabulary_type2, question_vocabulary_type3, question_vocabulary_type4, question_vocabulary_type5, question_grammar_type1, save_path, folder_path)
     
 
-def analyze(id, test_paper, result, save_path):
+def analyze(id, test_paper, result, save_path, cursor, folder_path):
+    analysis_window = tk.Toplevel()
+    analysis_window.geometry("600x400")
+    text_area = scrolledtext.ScrolledText(analysis_window, wrap=tk.WORD, width=600, height=400, font=("Arial", 10))
+    text_area.pack(padx=10, pady=10)
+    def gui_print(*args, **kwargs):
+        output = " ".join(map(str, args))
+        text_area.insert(tk.END, output + "\n")
+        text_area.see(tk.END)
     knowledge_points = {}
     mistakes_sum = 0
-    print(end='\n\n\n\n\n')
-    print("student info: ", "student_no:",result[0][0]," ", "name:",result[0][1]," ", "email:",result[0][2],end = '\n')
+    gui_print(end='\n\n\n\n\n')
+    gui_print("student info: ", "student_no:",result[0][0]," ", "name:",result[0][1]," ", "email:",result[0][2],end = '\n')
     for row in result:
         if row[10] == 1:
             mistakes_sum += 1
@@ -324,27 +337,27 @@ def analyze(id, test_paper, result, save_path):
                 knowledge_points[(row[5], type)] = knowledge_points.get((row[5],type), 0) + 1
 
             #knowledge_points[(row[5], row[4])] = knowledge_points.get((row[5],row[4]), 0) + 1
-            print("question info: ", "question_index:",row[3]," ", "type:",row[4]," ", "level:",row[5]," ", "is_gpt:",row[6]," ",end = '\n')
+            gui_print("question info: ", "question_index:",row[3]," ", "type:",row[4]," ", "level:",row[5]," ", "is_gpt:",row[6]," ",end = '\n')
 
             if re.search(r'\s*\n+End of Part', row[7]):
                 row[7] = re.split(r'\s*End of Part\s*', row[7])[0]
 
-            print("question content: ",row[7],end = '\n')
-            print("correct answer: ",row[8], ";" ,"student answer: ",row[9], end = '\n')
-            print("------------------------------------------------------")
-    print("mistakes_sum: ", mistakes_sum, end = '\n')
+            gui_print("question content: ",row[7],end = '\n')
+            gui_print("correct answer: ",row[8], ";" ,"student answer: ",row[9], end = '\n')
+            gui_print("------------------------------------------------------")
+    gui_print("mistakes_sum: ", mistakes_sum, end = '\n')
     knowledge_points = sorted(knowledge_points.items(), key=sort_key, reverse=False)
     for key in knowledge_points:
         if re.match(r'\d+\.', key[0][1]):
             type = 'Grammar: '
         else:
             type = 'Vocabulary: '
-        print("level:", key[0][0])
-        print("knowledge_point:", type+key[0][1])
-        print(end='\n')
+        gui_print("level:", key[0][0])
+        gui_print("knowledge_point:", type+key[0][1])
+        gui_print(end='\n')
             
 
-def generate(id, test_paper, result, save_path):
+def generate(id, test_paper, result, save_path, cursor, folder_path):
     knowledge_points = {}
     mistakes_sum = 0
     for row in result:
@@ -375,10 +388,10 @@ def generate(id, test_paper, result, save_path):
         cursor.execute(query, (f'%{key[0][1]}%', key[0][0], key[1]))
         new_questions.update(cursor.fetchall())
     
-    questions_preprocess(test_paper, new_questions, save_path)
+    questions_preprocess(test_paper, new_questions, save_path, cursor, folder_path)
 
 
-def general_analysis(id , test_paper, operation, save_path):
+def general_analysis(id , test_paper, operation, save_path, cursor, folder_path):
     #查询学生该试卷的所有题目
     inner_search_query ="""
     SELECT students.student_no, students.name, students.email, 
@@ -392,14 +405,13 @@ def general_analysis(id , test_paper, operation, save_path):
     result = cursor.fetchall()
     
     result = [list(row) for row in result]
-
     if operation == 'ANALYZE':
-        analyze(id, test_paper, result, save_path)
+        analyze(id, test_paper, result, save_path, cursor, folder_path)
     elif operation == 'GENERATE':
-        generate(id, test_paper, result, save_path)
+        generate(id, test_paper, result, save_path, cursor, folder_path)
 
 
-def query_papers(id):
+def query_papers(id,cursor):
     #查询该学生所有做过的试卷
     query = '''
             SELECT questions.question_index 
@@ -416,26 +428,27 @@ def query_papers(id):
         question_index = paper[0]
         paper_id = re.sub(r'\d+$', '', question_index)
         paper_set.add(paper_id)
-    for paper in paper_set:
-        print(paper)
-    test_paper = input("select the specific test paper:")
-    if test_paper not in paper_set:
-        raise ValueError("The test paper does not exist.")
-    else:
-        last_file = get_latest_paper_id(test_paper)
-        if last_file:
-            name = os.path.splitext(os.path.basename(last_file))[0]
-            version = name.split("\\")[-1].split(" ")[-1]
-            save_path = test_paper + ' ' + str(int(version) + 1)
-        else:
-            save_path = test_paper+' 1'
-    operation = input("select the operation: ANALYZE or GENERATE:").upper()
-    general_analysis(id, test_paper, operation, save_path)
+#    for paper in paper_set:
+#        print(paper)
+#    test_paper = input("select the specific test paper:")
+#    if test_paper not in paper_set:
+#        raise ValueError("The test paper does not exist.")
+#    else:
+#        last_file = get_latest_paper_id(test_paper)
+#        if last_file:
+#            name = os.path.splitext(os.path.basename(last_file))[0]
+#            version = name.split("\\")[-1].split(" ")[-1]
+#            save_path = test_paper + ' ' + str(int(version) + 1)
+#        else:
+#            save_path = test_paper+' 1'
+#    operation = input("select the operation: ANALYZE or GENERATE:").upper()
+#    general_analysis(id, test_paper, operation, save_path)
+    return paper_set
     
 
-def main():
+def query_id(entry,cursor):
     #通过姓名、student_no查询学生主键student_id
-    info = input("enter name or student no of student: ")
+    info = entry
     try:
         info = int(info)
     except:
@@ -448,7 +461,8 @@ def main():
         cursor.execute("SELECT students.student_id FROM students WHERE students.name = %s", (info,))
         id = cursor.fetchall()
     id = id[0][0]
-    query_papers(id)
+    paper_set = query_papers(id,cursor)
+    return (id, paper_set)
 
 if __name__ == '__main__':
     db = mysql.connector.connect(
@@ -458,8 +472,5 @@ if __name__ == '__main__':
         database="JAPGPT"
     )
     cursor = db.cursor()
-    
-    main()
-
     cursor.close()
     db.close()
